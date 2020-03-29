@@ -63,9 +63,9 @@ class Dataset(data.Dataset):
 def histogram_equalize(filepath):
     # read a image using imread 
     img = cv2.imread(filepath, 0)
-    ret,thresh1 = cv2.threshold(img, 100, 255, cv2.THRESH_TOZERO)
-    thresh1 = cv2.cvtColor(thresh1,cv2.COLOR_GRAY2RGB)
-    b,g,r = cv2.split(thresh1)
+    # ret,thresh1 = cv2.threshold(img, 100, 255, cv2.THRESH_TOZERO)
+    # thresh1 = cv2.cvtColor(thresh1,cv2.COLOR_GRAY2RGB)
+    b,g,r = cv2.split(img)
     equ_b = cv2.equalizeHist(b)
     equ_g = cv2.equalizeHist(g)
     equ_r = cv2.equalizeHist(r)
