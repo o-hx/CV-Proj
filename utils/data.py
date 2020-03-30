@@ -62,7 +62,7 @@ class Dataset(data.Dataset):
 
 def histogram_equalize(filepath):
     # read a image using imread 
-    img = cv2.imread(filepath, 0)
+    img = cv2.imread(filepath)
     # ret,thresh1 = cv2.threshold(img, 100, 255, cv2.THRESH_TOZERO)
     # thresh1 = cv2.cvtColor(thresh1,cv2.COLOR_GRAY2RGB)
     b,g,r = cv2.split(img)
