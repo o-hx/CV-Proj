@@ -308,6 +308,7 @@ def validate_and_plot(validation_dataloader,
         if not os.path.exists(os.path.join(plots_save_path,current_time)):
             os.makedirs(os.path.join(plots_save_path,current_time))
         plt.savefig(os.path.join(plots_save_path,current_time, f"{prefix}_{data_idx}.png"))
+        plt.close()
         log_print(f'Plot {data_idx} saved', logger)
 
     log_print(f'Validation completed', logger)

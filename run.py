@@ -25,9 +25,9 @@ if __name__ == '__main__':
     test_image_filepath = os.path.join(cwd,'data','test_images')
     df_filepath = os.path.join(cwd,'data','train.csv')
     seed = 2
-    batch_size = 16
+    batch_size = 8
     img_size = (4*64, 6*64)
-    model_save_prefix = 'densenet121_bce'
+    model_save_prefix = 'densenet169_'
 
     train_transform = torchvision.transforms.Compose([torchvision.transforms.Resize(img_size),
                                                     torchvision.transforms.ToTensor(),
@@ -47,8 +47,8 @@ if __name__ == '__main__':
                                                                                 batch_size = batch_size)
 
     # Define Model
-    segmentation_model = smp.Unet('densenet121', encoder_weights='imagenet',classes=4, activation='sigmoid')
-    # segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','best_model.pth'))
+    # segmentation_model = smp.Unet('densenet169', encoder_weights='imagenet',classes=4, activation='sigmoid', decoder_attention_type = 'scse')
+    segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','best_model.pth'))
 
     # Freeze the encoder parameters for now (just train the decoder)
     # for param in segmentation_model.encoder.parameters():
@@ -60,8 +60,8 @@ if __name__ == '__main__':
     )
 
     # Define Loss and Accuracy Metric
-    # loss = smp.utils.losses.DiceLoss()
-    loss = smp.utils.losses.BCELoss()
+    loss = smp.utils.losses.DiceLoss()
+    # loss = smp.utils.losses.BCELoss()
     metrics = [
         smp.utils.metrics.IoU(threshold=0.5),
     ]
@@ -87,5 +87,6 @@ if __name__ == '__main__':
                 logger = logging,
                 verbose = True,
                 model_save_path = os.path.join(os.getcwd(),'weights'),
+                model_save_prefix = model_save_prefix,
                 plots_save_path = os.path.join(os.getcwd(),'plots')
                 )
