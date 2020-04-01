@@ -46,7 +46,7 @@ if __name__ == '__main__':
                                                                     batch_size = batch_size,
                                                                     shuffle_val_dataloader = True)
 
-    segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','best_model.pth'))
+    segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','densenet169_best_model.pth'))
 
     validate_and_plot(validation_dataloader = validation_dataloader,
                         model = segmentation_model,

@@ -245,22 +245,19 @@ def test_model(test_dataloader,
 
     log_print('Predicting on test set...', logger)
 
-    if os.path.exists(model_save_path):
-        if torch.cuda.is_available():
-            model.cuda()
+    if torch.cuda.is_available():
+        model.cuda()
 
-        all_outputs = torch.tensor([], device=device)
+    all_outputs = torch.tensor([], device=device)
 
-        with torch.no_grad():
-            for _, data in enumerate(test_dataloader):
-                inputs = data[0].to(device)
-                outputs = model(inputs)
-                all_outputs = torch.cat((all_outputs, outputs), 0)
-        
-        log_print('Saving predictions...', logger)
-        np.save(os.path.join(predictions_save_path,str(time.ctime()).replace(':','').replace('  ',' ').replace(' ','_')), all_outputs)
-    else:
-        raise ImportError('Model weights do not exist')
+    with torch.no_grad():
+        for _, data in enumerate(test_dataloader):
+            inputs = data[0].to(device)
+            outputs = model(inputs)
+            all_outputs = torch.cat((all_outputs, outputs), 0)
+    
+    log_print('Saving predictions...', logger)
+    np.save(os.path.join(predictions_save_path,str(time.ctime()).replace(':','').replace('  ',' ').replace(' ','_')), all_outputs)
 
 def validate_and_plot(validation_dataloader,
                     model,
@@ -269,7 +266,8 @@ def validate_and_plot(validation_dataloader,
                     logger = None,
                     verbose = True,
                     plots_save_path = os.path.join(os.getcwd(),'prediction_plots'),
-                    prefix = 'Val'
+                    prefix = 'Val',
+                    threshold = 0.5
                     ):
 
     log_print('Validating Model...', logger)
@@ -287,7 +285,8 @@ def validate_and_plot(validation_dataloader,
         # Only take the first image in the batch
         img = inputs[0].detach().cpu()
         masks = data[1][0].detach().cpu()
-        masks_pred = masks_pred[0].detach().cpu()
+        masks_pred = masks_pred[0].detach().cpu().numpy()
+        masks_pred = np.where(masks_pred > threshold,1,0)
         
         img = (img*torch.tensor([0.229, 0.224, 0.225]).unsqueeze(1).unsqueeze(1)+torch.tensor([0.485, 0.456, 0.406]).unsqueeze(1).unsqueeze(1)).numpy().transpose((1,2,0))
         fig, ax = plt.subplots(2,4, figsize=(27, 10))

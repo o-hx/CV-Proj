@@ -48,7 +48,7 @@ if __name__ == '__main__':
 
     # Define Model
     # segmentation_model = smp.Unet('densenet169', encoder_weights='imagenet',classes=4, activation='sigmoid', decoder_attention_type = 'scse')
-    segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','best_model.pth'))
+    segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','densenet169_best_model - Copy.pth'))
 
     # Freeze the encoder parameters for now (just train the decoder)
     # for param in segmentation_model.encoder.parameters():
@@ -60,19 +60,18 @@ if __name__ == '__main__':
     )
 
     # Define Loss and Accuracy Metric
-    loss = smp.utils.losses.DiceLoss()
-    # loss = smp.utils.losses.BCELoss()
+    loss = smp.utils.losses.DiceLoss() + smp.utils.losses.BCELoss()
     metrics = [
         smp.utils.metrics.IoU(threshold=0.5),
     ]
 
     # Define optimizer
     optimizer = torch.optim.Adam([ 
-        dict(params= segmentation_model.parameters(), lr=0.0005),
+        dict(params= segmentation_model.parameters(), lr=0.00001),
     ])
 
     # Scheduler
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[5], gamma=0.5)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[5], gamma=0.1)
 
     train_model(train_dataloader = train_dataloader,
                 validation_dataloader = validation_dataloader,
