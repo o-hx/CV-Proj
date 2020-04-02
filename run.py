@@ -26,8 +26,8 @@ if __name__ == '__main__':
     df_filepath = os.path.join(cwd,'data','train.csv')
     seed = 2
     batch_size = 8
-    img_size = (4*64, 6*64)
-    model_save_prefix = 'densenet169_'
+    img_size = (int(4*64), int(6*64))
+    model_save_prefix = 'dl_efficientb2_'
 
     train_transform = torchvision.transforms.Compose([torchvision.transforms.Resize(img_size),
                                                     torchvision.transforms.ToTensor(),
@@ -48,7 +48,8 @@ if __name__ == '__main__':
 
     # Define Model
     # segmentation_model = smp.Unet('densenet169', encoder_weights='imagenet',classes=4, activation='sigmoid', decoder_attention_type = 'scse')
-    segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','densenet169_best_model - Copy.pth'))
+    segmentation_model = smp.PAN('densenet169', encoder_weights='imagenet',classes=4, activation='sigmoid')
+    # segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','densenet169_best_model - Copy.pth'))
 
     # Freeze the encoder parameters for now (just train the decoder)
     # for param in segmentation_model.encoder.parameters():
@@ -67,11 +68,11 @@ if __name__ == '__main__':
 
     # Define optimizer
     optimizer = torch.optim.Adam([ 
-        dict(params= segmentation_model.parameters(), lr=0.00001),
+        dict(params= segmentation_model.parameters(), lr=0.001),
     ])
 
     # Scheduler
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[5], gamma=0.1)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 10, T_mult=1, eta_min=0)
 
     train_model(train_dataloader = train_dataloader,
                 validation_dataloader = validation_dataloader,
