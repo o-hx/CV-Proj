@@ -65,10 +65,10 @@ class Dataset(data.Dataset):
 def histogram_equalize(filepath, equalise = False):
     if equalise:
          # read a image using imread 
-        img = cv2.imread(filepath)
-        # ret,thresh1 = cv2.threshold(img, 100, 255, cv2.THRESH_TOZERO)
-        # thresh1 = cv2.cvtColor(thresh1,cv2.COLOR_GRAY2RGB)
-        b,g,r = cv2.split(img)
+        img = cv2.imread(filepath, 0)
+        ret,thresh1 = cv2.threshold(img, 50, 255, cv2.THRESH_TOZERO)
+        thresh1 = cv2.cvtColor(thresh1,cv2.COLOR_GRAY2RGB)
+        b,g,r = cv2.split(thresh1)
         equ_b = cv2.equalizeHist(b)
         equ_g = cv2.equalizeHist(g)
         equ_r = cv2.equalizeHist(r)
@@ -124,10 +124,17 @@ if __name__ == "__main__":
 
     train_transform = torchvision.transforms.Compose([torchvision.transforms.Resize((6*64, 9*64)),
                                                     torchvision.transforms.ToTensor(),
-                                                    torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+                                                    #torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                                                    ])
 
     test_transform = torchvision.transforms.Compose([torchvision.transforms.Resize((6*64, 9*64)),
                                                     torchvision.transforms.ToTensor(),
                                                     torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
-    train_dl, valid_dl, test_dl = prepare_dataloader(train_image_filepath, test_image_filepath, df_filepath, seed, train_transform, test_transform)
+    train_dl, valid_dl, test_dl = prepare_dataloader(train_image_filepath, test_image_filepath, df_filepath, seed, train_transform, test_transform, 256)
+
+    for idx, data in enumerate(train_dl):
+        X, masks = data
+        trans = torchvision.transforms.ToPILImage()
+        trans(X[0]).show()
+        break
