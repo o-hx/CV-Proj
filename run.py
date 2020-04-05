@@ -37,6 +37,9 @@ if __name__ == '__main__':
                                                     torchvision.transforms.ToTensor(),
                                                     torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
+    data_augmentations = [torchvision.transforms.RandomHorizontalFlip(p= 1), 
+                          torchvision.transforms.RandomVerticalFlip(p= 1)]
+
     train_dataloader, validation_dataloader, test_dataloader = prepare_dataloader(train_image_filepath,
                                                                                 test_image_filepath,
                                                                                 df_filepath,
@@ -44,7 +47,9 @@ if __name__ == '__main__':
                                                                                 train_transform,
                                                                                 test_transform,
                                                                                 size = img_size,
-                                                                                batch_size = batch_size)
+                                                                                batch_size = batch_size, 
+                                                                                label = None, 
+                                                                                data_augmentations = data_augmentations)
 
     # Define Model
     # segmentation_model = smp.Unet('densenet169', encoder_weights='imagenet',classes=4, activation='sigmoid', decoder_attention_type = 'scse')

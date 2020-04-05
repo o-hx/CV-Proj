@@ -38,13 +38,17 @@ def rle_to_mask(rle_string, width, height):
         return img
 
 class Dataset(data.Dataset):
-    def __init__(self, image_filepath, EncodedPixels, size, transforms = None, test = False, equalise = True):
+    def __init__(self, image_filepath, EncodedPixels, size, transforms = None, test = False, equalise = True, label = None, data_augmentations = None):
         self.image_filepath = image_filepath
         self.EncodedPixels = EncodedPixels # Each encodedpixels should be (4, H, W) for 4 masks, in the order of Fish, Flower, Gravel and Sugar masks
         self.transforms = transforms
         self.test = test
         self.size = size
         self.equalise = equalise
+        self.label = label
+        self.list_of_classes = ['fish', 'flower', 'gravel', 'sugar']
+        self.data_augmentations = data_augmentations
+
     def __len__(self):
         return len(self.image_filepath)
     def __getitem__(self, index):
@@ -60,6 +64,25 @@ class Dataset(data.Dataset):
             masks = [torch.from_numpy((rle_to_mask(i, 2100, 1400) * 1).astype(float)).unsqueeze(0) for i in masks]
             masks = torch.stack(masks)
             masks = torch.nn.functional.interpolate(masks, size = self.size).squeeze().type(torch.float32)
+            trans = torchvision.transforms.ToPILImage()
+            trans1 = torchvision.transforms.ToTensor()
+            if self.data_augmentations is not None:
+                for t in self.data_augmentations:
+                    if np.random.random_sample() >= 0.5:
+                        X = trans(X)
+                        X = t(X)
+                        X = trans1(X)
+                        mask_stack = []
+                        for i in range(len(self.list_of_classes)):
+                            temp_mask = trans(masks[i])
+                            temp_mask = t(temp_mask)
+                            temp_mask = trans1(temp_mask)
+                            mask_stack.append(temp_mask)
+                        masks = torch.stack(mask_stack)
+                        masks.squeeze_()
+            if self.label is not None and self.label in self.list_of_classes:
+                masks = masks[self.list_of_classes.index(self.label), :,:]
+                masks.unsqueeze_(0)
             return X, masks
 
 def histogram_equalize(filepath, equalise = False):
@@ -98,14 +121,14 @@ def group_data(df, image_filepath):
     masks = [encodedpixels[i:i+4] for i in range(0, len(encodedpixels), 4)]
     return images, masks
 
-def prepare_dataloader(train_image_filepath, test_image_filepath, df_filepath, seed, train_transform, test_transform, size, batch_size = 1, shuffle_val_dataloader = False):
+def prepare_dataloader(train_image_filepath, test_image_filepath, df_filepath, seed, train_transform, test_transform, size, batch_size = 1, shuffle_val_dataloader = False, label = None, data_augmentations = None):
     train_df, valid_df = split_data(df_filepath, seed)
     train_images, train_masks = group_data(train_df, train_image_filepath)
     valid_images, valid_masks = group_data(valid_df, train_image_filepath)
     test_images = [test_image_filepath + '/' + i for i in os.listdir(test_image_filepath)]
-    train_ds = Dataset(train_images, train_masks, size = size, transforms = train_transform)
-    valid_ds = Dataset(valid_images, valid_masks, size = size, transforms = test_transform)
-    test_ds = Dataset(test_images, EncodedPixels = None, transforms = test_transform,  size = size,test = True)
+    train_ds = Dataset(train_images, train_masks, size = size, transforms = train_transform, label = label, data_augmentations = data_augmentations)
+    valid_ds = Dataset(valid_images, valid_masks, size = size, transforms = test_transform, label = label)
+    test_ds = Dataset(test_images, EncodedPixels = None, transforms = test_transform,  size = size, test = True, label = label)
 
     train_dl = data.DataLoader(train_ds, batch_size = batch_size, shuffle = True)
     valid_dl = data.DataLoader(valid_ds, batch_size = batch_size, shuffle = shuffle_val_dataloader)
@@ -124,17 +147,14 @@ if __name__ == "__main__":
 
     train_transform = torchvision.transforms.Compose([torchvision.transforms.Resize((6*64, 9*64)),
                                                     torchvision.transforms.ToTensor(),
-                                                    #torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                                                    torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
                                                     ])
 
     test_transform = torchvision.transforms.Compose([torchvision.transforms.Resize((6*64, 9*64)),
                                                     torchvision.transforms.ToTensor(),
                                                     torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
-    train_dl, valid_dl, test_dl = prepare_dataloader(train_image_filepath, test_image_filepath, df_filepath, seed, train_transform, test_transform, 256)
+    data_augmentations = [torchvision.transforms.RandomHorizontalFlip(p= 1), 
+                          torchvision.transforms.RandomVerticalFlip(p= 1)]
 
-    for idx, data in enumerate(train_dl):
-        X, masks = data
-        trans = torchvision.transforms.ToPILImage()
-        trans(X[0]).show()
-        break
+    train_dl, valid_dl, test_dl = prepare_dataloader(train_image_filepath, test_image_filepath, df_filepath, seed, train_transform, test_transform, 256, 64, label = None, data_augmentations = data_augmentations)
