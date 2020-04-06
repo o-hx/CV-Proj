@@ -69,7 +69,7 @@ if __name__ == '__main__':
     )
 
     # Define Loss and Accuracy Metric
-    loss = smp.utils.losses.DiceLoss() + smp.utils.losses.BCELoss()
+    loss = smp.utils.losses.DiceLoss() + 0.5*smp.utils.losses.BCELoss()
     metrics = [
         smp.utils.metrics.IoU(threshold=iou_threshold),
     ]
