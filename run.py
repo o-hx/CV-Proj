@@ -34,6 +34,7 @@ if __name__ == '__main__':
     classes = ['sugar','flower','fish','gravel']
     iou_threshold = 0.5
     total_epochs = 10
+    grayscale = True
 
     train_transform = torchvision.transforms.Compose([torchvision.transforms.Resize(img_size),
                                                     torchvision.transforms.ToTensor(),
@@ -55,7 +56,8 @@ if __name__ == '__main__':
                                                                                 size = img_size,
                                                                                 batch_size = batch_size, 
                                                                                 label = classes, 
-                                                                                data_augmentations = data_augmentations)
+                                                                                data_augmentations = data_augmentations, 
+                                                                                grayscale = grayscale)
 
     # Define Model
     segmentation_model = smp.Unet('efficientnet-b3', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type = 'scse')
