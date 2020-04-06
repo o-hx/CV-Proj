@@ -58,7 +58,7 @@ if __name__ == '__main__':
                                                                                 data_augmentations = data_augmentations)
 
     # Define Model
-    segmentation_model = smp.Unet('densenet169', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type = 'scse')
+    segmentation_model = smp.Unet('efficientnet-b3', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type = 'scse')
     # segmentation_model = smp.PAN('densenet169', encoder_weights='imagenet',classes=4, activation='sigmoid')
     # segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','densenet169_best_model - Copy.pth'))
     model_save_prefix = segmentation_model.name + '_'
