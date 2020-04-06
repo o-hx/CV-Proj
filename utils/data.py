@@ -38,7 +38,7 @@ def rle_to_mask(rle_string, width, height):
         return img
 
 class Dataset(data.Dataset):
-    def __init__(self, image_filepath, EncodedPixels, size, transforms = None, test = False, equalise = True, label = None, data_augmentations = None):
+    def __init__(self, image_filepath, EncodedPixels, size, transforms = None, test = False, equalise = True, label = ['fish', 'flower', 'gravel', 'sugar'], data_augmentations = None):
         self.image_filepath = image_filepath
         self.EncodedPixels = EncodedPixels # Each encodedpixels should be (4, H, W) for 4 masks, in the order of Fish, Flower, Gravel and Sugar masks
         self.transforms = transforms
@@ -80,9 +80,12 @@ class Dataset(data.Dataset):
                             mask_stack.append(temp_mask)
                         masks = torch.stack(mask_stack)
                         masks.squeeze_()
-            if self.label is not None and self.label in self.list_of_classes:
-                masks = masks[self.list_of_classes.index(self.label), :,:]
-                masks.unsqueeze_(0)
+
+            for lab in self.label:
+                if lab not in self.list_of_classes:
+                    raise ValueError("Make sure all labels belong to 'fish', 'flower', 'gravel' or 'sugar'")
+            masks_to_include = [masks[self.list_of_classes.index(lab), :,:] for lab in self.label]
+            masks = torch.stack(masks_to_include)
             return X, masks
 
 def histogram_equalize(filepath, equalise = False):
@@ -157,4 +160,4 @@ if __name__ == "__main__":
     data_augmentations = [torchvision.transforms.RandomHorizontalFlip(p= 1), 
                           torchvision.transforms.RandomVerticalFlip(p= 1)]
 
-    train_dl, valid_dl, test_dl = prepare_dataloader(train_image_filepath, test_image_filepath, df_filepath, seed, train_transform, test_transform, 256, 64, label = None, data_augmentations = data_augmentations)
+    train_dl, valid_dl, test_dl = prepare_dataloader(train_image_filepath, test_image_filepath, df_filepath, seed, train_transform, test_transform, 256, 64, label = ['fish'], data_augmentations = data_augmentations)
