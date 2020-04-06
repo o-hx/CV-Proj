@@ -6,6 +6,9 @@ test_images
 train_images
 train.csv
 
+# Ignore credentials
+credentials.json
+
 ### JupyterNotebooks ###
 # gitignore template for Jupyter Notebooks
 # website: http://jupyter.org/
