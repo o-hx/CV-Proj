@@ -108,7 +108,7 @@ if __name__ == '__main__':
         model_name = segmentation_model.name,
         image_size = str(img_size),
         batch_size = batch_size,
-        data_augmentation = str(data_augmentations),
+        data_augmentation = str(data_augmentations + [grayscale]),
         loss = loss.__name__,
         start_lr = start_lr,
         optimizer = re.findall(r"[a-zA-Z]+'",str(type(optimizer)))[0].replace("'",''),
