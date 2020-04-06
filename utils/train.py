@@ -83,7 +83,7 @@ class Epoch:
                             metric_value = metric_fn(y_pred[:,i,:,:], y[:,i,:,:]).cpu().detach().numpy()
                             metrics_meters[f'{metric_fn.__name__}_{self.classes[i]}'].add(metric_value)
 
-                metrics_logs = {k: v.mean for k, v in metrics_meters.items()}
+                metrics_logs = {k: v.mean for k, v in metrics_meters.items() if 'overall' in k}
                 logs.update(metrics_logs)
 
                 if self.verbose:
@@ -92,7 +92,7 @@ class Epoch:
 
         cumulative_logs = {k: v.sum/v.n for k, v in metrics_meters.items()}
         cumulative_logs['loss'] = loss_meter.sum/loss_meter.n
-        log_print(" ".join([f"{k}:{v:.4f}" for k, v in cumulative_logs.items()]), self.logger, log_only = True)
+        log_print(" ".join([f"{k}:{v:.4f}" for k, v in cumulative_logs.items()]), self.logger)
 
         return cumulative_logs
 
