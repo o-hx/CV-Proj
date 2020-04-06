@@ -27,7 +27,8 @@ if __name__ == '__main__':
     seed = 2
     batch_size = 8
     img_size = (int(4*64), int(6*64))
-    model_save_prefix = 'dl_efficientb2_'
+    classes = ['sugar','flower','fish','gravel']
+    model_save_prefix = 'unet_dn169_'
 
     train_transform = torchvision.transforms.Compose([torchvision.transforms.Resize(img_size),
                                                     torchvision.transforms.ToTensor(),
@@ -37,7 +38,7 @@ if __name__ == '__main__':
                                                     torchvision.transforms.ToTensor(),
                                                     torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
-    data_augmentations = [torchvision.transforms.RandomHorizontalFlip(p= 1), 
+    data_augmentations = [torchvision.transforms.RandomHorizontalFlip(p= 1),
                           torchvision.transforms.RandomVerticalFlip(p= 1)]
 
     train_dataloader, validation_dataloader, test_dataloader = prepare_dataloader(train_image_filepath,
@@ -52,8 +53,8 @@ if __name__ == '__main__':
                                                                                 data_augmentations = data_augmentations)
 
     # Define Model
-    # segmentation_model = smp.Unet('densenet169', encoder_weights='imagenet',classes=4, activation='sigmoid', decoder_attention_type = 'scse')
-    segmentation_model = smp.PAN('densenet169', encoder_weights='imagenet',classes=4, activation='sigmoid')
+    segmentation_model = smp.Unet('densenet169', encoder_weights='imagenet',classes=4, activation='sigmoid', decoder_attention_type = 'scse')
+    # segmentation_model = smp.PAN('densenet169', encoder_weights='imagenet',classes=4, activation='sigmoid')
     # segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','densenet169_best_model - Copy.pth'))
 
     # Freeze the encoder parameters for now (just train the decoder)
@@ -66,13 +67,13 @@ if __name__ == '__main__':
     )
 
     # Define Loss and Accuracy Metric
-    loss = smp.utils.losses.DiceLoss() + smp.utils.losses.BCELoss()
+    loss = smp.utils.losses.DiceLoss() #+ smp.utils.losses.BCELoss()
     metrics = [
         smp.utils.metrics.IoU(threshold=0.5),
     ]
 
     # Define optimizer
-    optimizer = torch.optim.Adam([ 
+    optimizer = torch.optim.Adam([
         dict(params= segmentation_model.parameters(), lr=0.001),
     ])
 
@@ -89,6 +90,7 @@ if __name__ == '__main__':
                 batch_size = batch_size,
                 num_epochs = 10,
                 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+                classes = classes,
                 logger = logging,
                 verbose = True,
                 model_save_path = os.path.join(os.getcwd(),'weights'),
