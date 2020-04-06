@@ -49,7 +49,7 @@ if __name__ == '__main__':
                                                                                 test_transform,
                                                                                 size = img_size,
                                                                                 batch_size = batch_size, 
-                                                                                label = None, 
+                                                                                label = ['fish', 'flower', 'gravel', 'sugar'], 
                                                                                 data_augmentations = data_augmentations)
 
     # Define Model
