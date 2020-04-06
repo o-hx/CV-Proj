@@ -5,9 +5,11 @@ import os
 import time
 import segmentation_models_pytorch as smp
 import torchvision
+import re
 
 from utils.data import prepare_dataloader
-from utils.train import train_model
+from utils.train import train_model, log_print
+from utils.sheets_upload import upload_google_sheets
 
 if __name__ == '__main__':
     # Set up logging
@@ -15,7 +17,8 @@ if __name__ == '__main__':
     if not os.path.exists(log_file_path):
         os.makedirs(log_file_path)
 
-    logging.basicConfig(filename= os.path.join(log_file_path,"training_log_" + str(time.ctime()).replace(':','').replace('  ',' ').replace(' ','_') + ".log"),
+    start_time = time.ctime()
+    logging.basicConfig(filename= os.path.join(log_file_path,"training_log_" + str(start_time).replace(':','').replace('  ',' ').replace(' ','_') + ".log"),
                         format='%(asctime)s - %(message)s',
                         level=logging.INFO)
 
@@ -27,8 +30,10 @@ if __name__ == '__main__':
     seed = 2
     batch_size = 8
     img_size = (int(4*64), int(6*64))
+    start_lr = 0.001
     classes = ['sugar','flower','fish','gravel']
-    model_save_prefix = 'unet_dn169_'
+    iou_threshold = 0.5
+    total_epochs = 10
 
     train_transform = torchvision.transforms.Compose([torchvision.transforms.Resize(img_size),
                                                     torchvision.transforms.ToTensor(),
@@ -49,17 +54,14 @@ if __name__ == '__main__':
                                                                                 test_transform,
                                                                                 size = img_size,
                                                                                 batch_size = batch_size, 
-                                                                                label = ['fish', 'flower', 'gravel', 'sugar'], 
+                                                                                label = classes, 
                                                                                 data_augmentations = data_augmentations)
 
     # Define Model
-    segmentation_model = smp.Unet('densenet169', encoder_weights='imagenet',classes=4, activation='sigmoid', decoder_attention_type = 'scse')
+    segmentation_model = smp.Unet('densenet169', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type = 'scse')
     # segmentation_model = smp.PAN('densenet169', encoder_weights='imagenet',classes=4, activation='sigmoid')
     # segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','densenet169_best_model - Copy.pth'))
-
-    # Freeze the encoder parameters for now (just train the decoder)
-    # for param in segmentation_model.encoder.parameters():
-    #     param.requires_grad = False
+    model_save_prefix = segmentation_model.name + '_'
 
     params = dict(
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
@@ -67,33 +69,58 @@ if __name__ == '__main__':
     )
 
     # Define Loss and Accuracy Metric
-    loss = smp.utils.losses.DiceLoss() #+ smp.utils.losses.BCELoss()
+    loss = smp.utils.losses.DiceLoss() + smp.utils.losses.BCELoss()
     metrics = [
-        smp.utils.metrics.IoU(threshold=0.5),
+        smp.utils.metrics.IoU(threshold=iou_threshold),
     ]
 
     # Define optimizer
     optimizer = torch.optim.Adam([
-        dict(params= segmentation_model.parameters(), lr=0.001),
+        dict(params= segmentation_model.parameters(), lr=start_lr),
     ])
 
     # Scheduler
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 10, T_mult=1, eta_min=0)
 
-    train_model(train_dataloader = train_dataloader,
-                validation_dataloader = validation_dataloader,
-                model = segmentation_model,
-                loss = loss,
-                metrics = metrics,
-                optimizer = optimizer,
-                scheduler = scheduler,
-                batch_size = batch_size,
-                num_epochs = 10,
-                device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
-                classes = classes,
-                logger = logging,
-                verbose = True,
-                model_save_path = os.path.join(os.getcwd(),'weights'),
-                model_save_prefix = model_save_prefix,
-                plots_save_path = os.path.join(os.getcwd(),'plots')
-                )
+    losses, metric_values = train_model(train_dataloader = train_dataloader,
+                            validation_dataloader = validation_dataloader,
+                            model = segmentation_model,
+                            loss = loss,
+                            metrics = metrics,
+                            optimizer = optimizer,
+                            scheduler = scheduler,
+                            batch_size = batch_size,
+                            num_epochs = total_epochs,
+                            device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+                            classes = classes,
+                            logger = logging,
+                            verbose = True,
+                            model_save_path = os.path.join(os.getcwd(),'weights'),
+                            model_save_prefix = model_save_prefix,
+                            plots_save_path = os.path.join(os.getcwd(),'plots')
+                            )
+    log_print(f'Completed training and validation', logging)
+    
+    # Prepare dictionary to update to Google Sheets
+    result = dict(
+        model_name = segmentation_model.name,
+        image_size = str(img_size),
+        batch_size = batch_size,
+        data_augmentation = str(data_augmentations),
+        loss = loss.__name__,
+        start_lr = start_lr,
+        optimizer = re.findall(r"[a-zA-Z]+'",str(type(optimizer)))[0].replace("'",''),
+        scheduler = re.findall(r"[a-zA-Z]+'",str(type(scheduler)))[0].replace("'",''),
+        iou_threshold = iou_threshold,
+        total_epochs = total_epochs,
+        training_loss = losses['train'][-1],
+        validation_loss = losses['val'][-1],
+        train_iou_overall = metric_values['train']['iou_score_overall'][-1],
+        val_iou_overall = metric_values['val']['iou_score_overall'][-1]
+    )
+
+    for _class in classes:
+        result[f'train_iou_score_{_class}'] = metric_values['train'][f'iou_score_{_class}'][-1]
+        result[f'val_iou_score_{_class}'] = metric_values['val'][f'iou_score_{_class}'][-1]
+    
+    upload_google_sheets(result, logger = logging)

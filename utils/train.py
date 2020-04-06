@@ -18,7 +18,7 @@ def log_print(text, logger, log_only = False):
         logger.info(text)
 
 class Epoch:
-    def __init__(self, model, loss, metrics, stage_name, device='cpu', verbose=True, logger = None):
+    def __init__(self, model, loss, metrics, stage_name, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True):
         self.model = model
         self.loss = loss
         self.metrics = metrics
@@ -26,6 +26,8 @@ class Epoch:
         self.verbose = verbose
         self.device = device
         self.logger = logger
+        self.classes = classes
+        self.enable_class_wise_metrics = enable_class_wise_metrics
 
         self._to_device()
 
@@ -52,7 +54,12 @@ class Epoch:
 
         logs = {}
         loss_meter = AverageValueMeter()
-        metrics_meters = {metric.__name__: AverageValueMeter() for metric in self.metrics}
+        if self.enable_class_wise_metrics:
+            metric_meter_classes = self.classes + ['overall']
+        else:
+            metric_meter_classes = ['overall']
+
+        metrics_meters = {f'{metric.__name__}_{_class}': AverageValueMeter() for metric in self.metrics for _class in metric_meter_classes}
 
         with tqdm(dataloader, desc=self.stage_name, file=sys.stdout, disable=not (self.verbose)) as iterator:
             # Run for 1 epoch
@@ -69,7 +76,12 @@ class Epoch:
                 # update metrics logs
                 for metric_fn in self.metrics:
                     metric_value = metric_fn(y_pred, y).cpu().detach().numpy()
-                    metrics_meters[metric_fn.__name__].add(metric_value)
+                    metrics_meters[f'{metric_fn.__name__}_overall'].add(metric_value)
+
+                    if self.enable_class_wise_metrics:
+                        for i in range(0,len(self.classes)):
+                            metric_value = metric_fn(y_pred[:,i,:,:], y[:,i,:,:]).cpu().detach().numpy()
+                            metrics_meters[f'{metric_fn.__name__}_{self.classes[i]}'].add(metric_value)
 
                 metrics_logs = {k: v.mean for k, v in metrics_meters.items()}
                 logs.update(metrics_logs)
@@ -85,7 +97,7 @@ class Epoch:
         return cumulative_logs
 
 class TrainEpoch(Epoch):
-    def __init__(self, model, loss, metrics, optimizer, device='cpu', verbose=True, logger = None):
+    def __init__(self, model, loss, metrics, optimizer, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True):
         super().__init__(
             model=model,
             loss=loss,
@@ -93,7 +105,9 @@ class TrainEpoch(Epoch):
             stage_name='train',
             device=device,
             verbose=verbose,
-            logger=logger
+            logger=logger,
+            classes = classes,
+            enable_class_wise_metrics = enable_class_wise_metrics
         )
         self.optimizer = optimizer
 
@@ -109,7 +123,7 @@ class TrainEpoch(Epoch):
         return loss, prediction
 
 class ValidEpoch(Epoch):
-    def __init__(self, model, loss, metrics, device='cpu', verbose=True, logger = None):
+    def __init__(self, model, loss, metrics, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True):
         super().__init__(
             model=model,
             loss=loss,
@@ -117,7 +131,9 @@ class ValidEpoch(Epoch):
             stage_name='valid',
             device=device,
             verbose=verbose,
-            logger = logger
+            logger = logger,
+            classes = classes,
+            enable_class_wise_metrics = enable_class_wise_metrics
         )
 
     def on_epoch_start(self):
@@ -139,6 +155,7 @@ def train_model(train_dataloader,
                 batch_size = 1,
                 num_epochs = 12,
                 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+                classes = ['sugar','flower','fish','gravel'],
                 logger = None,
                 verbose = True,
                 model_save_path = os.path.join(os.getcwd(),'weights'),
@@ -160,6 +177,7 @@ def train_model(train_dataloader,
         device = device,
         verbose = verbose,
         logger = logger,
+        classes = classes
     )
 
     valid_epoch = ValidEpoch(
@@ -169,10 +187,11 @@ def train_model(train_dataloader,
         device = device,
         verbose = verbose,
         logger = logger,
+        classes = classes
     )
 
     # Record for plotting
-    metric_names = [metric.__name__ for metric in metrics]
+    metric_names = [f'{metric.__name__}_{_class}' for metric in metrics for _class in ['overall'] + classes]
     losses = {'train':[],'val':[]}
     metric_values = {'train':{name:[] for name in metric_names},'val':{name:[] for name in metric_names}}
 
@@ -225,15 +244,18 @@ def train_model(train_dataloader,
     ax[0].legend()
 
     for idx, metric_name in enumerate(metric_names):
-        ax[idx+1].set_title(metric_name)
-        ax[idx+1].plot(metric_values['train'][metric_name], color = 'skyblue', label=f"Training {metric_name}")
-        ax[idx+1].plot(metric_values['val'][metric_name], color = 'orange', label=f"Validation {metric_name}")
-        ax[idx+1].legend()
+        if 'overall' in metric_name: # Only plot for the overall metric and not all metrics
+            ax[idx+1].set_title(metric_name)
+            ax[idx+1].plot(metric_values['train'][metric_name], color = 'skyblue', label=f"Training {metric_name}")
+            ax[idx+1].plot(metric_values['val'][metric_name], color = 'orange', label=f"Validation {metric_name}")
+            ax[idx+1].legend()
     
     if not os.path.exists(plots_save_path):
         os.makedirs(plots_save_path)
     plt.savefig(os.path.join(plots_save_path,"nn_training_" + str(time.ctime()).replace(':','').replace('  ',' ').replace(' ','_') + ".png"))
     log_print('Plot Saved', logger)
+
+    return losses, metric_values
 
 def test_model(test_dataloader,
                 model,
