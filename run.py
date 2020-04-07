@@ -108,6 +108,7 @@ if __name__ == '__main__':
         model_name = segmentation_model.name,
         image_size = str(img_size),
         batch_size = batch_size,
+        classes = str(classes),
         data_augmentation = str(data_augmentations + [grayscale]),
         loss = loss.__name__,
         start_lr = start_lr,
