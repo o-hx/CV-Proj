@@ -8,6 +8,7 @@ import datetime as dt
 import matplotlib.pyplot as plt
 import time
 
+from copy import deepcopy
 from tqdm import tqdm as tqdm
 from segmentation_models_pytorch.utils.meter import AverageValueMeter
 
@@ -255,7 +256,7 @@ def train_model(train_dataloader,
     plt.savefig(os.path.join(plots_save_path,"nn_training_" + str(time.ctime()).replace(':','').replace('  ',' ').replace(' ','_') + ".png"))
     log_print('Plot Saved', logger)
 
-    return losses, metric_values
+    return losses, metric_values, best_epoch
 
 def test_model(test_dataloader,
                 model,

@@ -84,23 +84,23 @@ if __name__ == '__main__':
     # Scheduler
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 10, T_mult=1, eta_min=0)
 
-    losses, metric_values = train_model(train_dataloader = train_dataloader,
-                            validation_dataloader = validation_dataloader,
-                            model = segmentation_model,
-                            loss = loss,
-                            metrics = metrics,
-                            optimizer = optimizer,
-                            scheduler = scheduler,
-                            batch_size = batch_size,
-                            num_epochs = total_epochs,
-                            device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
-                            classes = classes,
-                            logger = logging,
-                            verbose = True,
-                            model_save_path = os.path.join(os.getcwd(),'weights'),
-                            model_save_prefix = model_save_prefix,
-                            plots_save_path = os.path.join(os.getcwd(),'plots')
-                            )
+    losses, metric_values, best_epoch = train_model(train_dataloader = train_dataloader,
+                                        validation_dataloader = validation_dataloader,
+                                        model = segmentation_model,
+                                        loss = loss,
+                                        metrics = metrics,
+                                        optimizer = optimizer,
+                                        scheduler = scheduler,
+                                        batch_size = batch_size,
+                                        num_epochs = total_epochs,
+                                        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+                                        classes = classes,
+                                        logger = logging,
+                                        verbose = True,
+                                        model_save_path = os.path.join(os.getcwd(),'weights'),
+                                        model_save_prefix = model_save_prefix,
+                                        plots_save_path = os.path.join(os.getcwd(),'plots')
+                                        )
     log_print(f'Completed training and validation', logging)
     
     # Prepare dictionary to update to Google Sheets
@@ -118,11 +118,14 @@ if __name__ == '__main__':
         training_loss = losses['train'][-1],
         validation_loss = losses['val'][-1],
         train_iou_overall = metric_values['train']['iou_score_overall'][-1],
-        val_iou_overall = metric_values['val']['iou_score_overall'][-1]
+        val_iou_overall = metric_values['val']['iou_score_overall'][-1],
+        train_iou_overall_best = metric_values['train']['iou_score_overall'][best_epoch],
+        val_iou_overall_best = metric_values['val']['iou_score_overall'][best_epoch]
     )
 
     for _class in classes:
         result[f'train_iou_score_{_class}'] = metric_values['train'][f'iou_score_{_class}'][-1]
         result[f'val_iou_score_{_class}'] = metric_values['val'][f'iou_score_{_class}'][-1]
+        result[f'val_iou_score_{_class}_best'] = metric_values['val'][f'iou_score_{_class}'][best_epoch]
     
     upload_google_sheets(result, logger = logging)
