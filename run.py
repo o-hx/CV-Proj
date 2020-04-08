@@ -37,7 +37,7 @@ if __name__ == '__main__':
     batch_size = 8
     img_size = (int(4*64), int(6*64))
     start_lr = 0.001
-    classes = ['fish','gravel']
+    classes = ['fish']
     iou_threshold = 0.5
     total_epochs = 10
     grayscale = True
@@ -66,7 +66,7 @@ if __name__ == '__main__':
                                                                                 grayscale = grayscale)
 
     # Define Model
-    segmentation_model = smp.DeepLabV3('se_resnet50', encoder_weights='imagenet',classes=len(classes), activation='sigmoid')
+    segmentation_model = smp.FPN('se_resnet50', encoder_weights='imagenet',classes=len(classes), activation='sigmoid')
     # segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','dlv3_se_resnet50_current_model.pth'))
     model_save_prefix = get_module_name(segmentation_model) + get_module_name(segmentation_model.encoder) + '_'
 
@@ -87,8 +87,8 @@ if __name__ == '__main__':
     ])
 
     # Scheduler
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 10, T_mult=1, eta_min=0)
-    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size =1, gamma=0.8)
+    # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 10, T_mult=1, eta_min=0)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size =1, gamma=0.8)
 
     losses, metric_values, best_epoch = train_model(train_dataloader = train_dataloader,
                                         validation_dataloader = validation_dataloader,
