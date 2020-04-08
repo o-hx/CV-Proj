@@ -11,6 +11,12 @@ from utils.data import prepare_dataloader
 from utils.train import train_model, log_print
 from utils.sheets_upload import upload_google_sheets
 
+def get_module_name(obj):
+    try:
+        return re.findall(r"[A-Za-z0-9]+'",str(type(obj)))[0].replace("'",'')
+    except:
+        return "Name not found"
+
 if __name__ == '__main__':
     # Set up logging
     log_file_path = os.path.join(os.getcwd(),'logs')
@@ -30,10 +36,10 @@ if __name__ == '__main__':
     seed = 2
     batch_size = 8
     img_size = (int(4*64), int(6*64))
-    start_lr = 0.001
-    classes = ['sugar','flower','fish','gravel']
+    start_lr = 0.0007
+    classes = ['fish','gravel']
     iou_threshold = 0.5
-    total_epochs = 10
+    total_epochs = 8
     grayscale = True
 
     train_transform = torchvision.transforms.Compose([torchvision.transforms.Resize(img_size),
@@ -60,10 +66,9 @@ if __name__ == '__main__':
                                                                                 grayscale = grayscale)
 
     # Define Model
-    segmentation_model = smp.Unet('efficientnet-b3', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type = 'scse')
-    # segmentation_model = smp.PAN('densenet169', encoder_weights='imagenet',classes=4, activation='sigmoid')
-    # segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','densenet169_best_model - Copy.pth'))
-    model_save_prefix = segmentation_model.name + '_'
+    # segmentation_model = smp.DeepLabV3('se_resnet50', encoder_weights='imagenet',classes=len(classes), activation='sigmoid')
+    segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','dlv3_se_resnet50_current_model.pth'))
+    model_save_prefix = get_module_name(segmentation_model) + get_module_name(segmentation_model.encoder) + '_'
 
     params = dict(
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
@@ -82,7 +87,8 @@ if __name__ == '__main__':
     ])
 
     # Scheduler
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 10, T_mult=1, eta_min=0)
+    #scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 10, T_mult=1, eta_min=0)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size =1, gamma=0.8)
 
     losses, metric_values, best_epoch = train_model(train_dataloader = train_dataloader,
                                         validation_dataloader = validation_dataloader,
@@ -105,7 +111,7 @@ if __name__ == '__main__':
     
     # Prepare dictionary to update to Google Sheets
     result = dict(
-        model_name = segmentation_model.name,
+        model_name = get_module_name(segmentation_model) + '_' + get_module_name(segmentation_model.encoder),
         image_size = str(img_size),
         batch_size = batch_size,
         classes = str(classes),
@@ -115,7 +121,7 @@ if __name__ == '__main__':
         optimizer = re.findall(r"[a-zA-Z]+'",str(type(optimizer)))[0].replace("'",''),
         scheduler = re.findall(r"[a-zA-Z]+'",str(type(scheduler)))[0].replace("'",''),
         iou_threshold = iou_threshold,
-        total_epochs = total_epochs,
+        total_epochs = total_epochs+12,
         training_loss = losses['train'][-1],
         validation_loss = losses['val'][-1],
         train_iou_overall = metric_values['train']['iou_score_overall'][-1],
