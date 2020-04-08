@@ -111,7 +111,8 @@ if __name__ == '__main__':
     
     # Prepare dictionary to update to Google Sheets
     result = dict(
-        model_name = get_module_name(segmentation_model) + '_' + get_module_name(segmentation_model.encoder),
+        model_name = get_module_name(segmentation_model),
+        encoder = get_module_name(segmentation_model.encoder),
         image_size = str(img_size),
         batch_size = batch_size,
         classes = str(classes),
