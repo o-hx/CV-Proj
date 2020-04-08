@@ -129,16 +129,31 @@ def group_data(df, image_filepath):
     masks = [encodedpixels[i:i+4] for i in range(0, len(encodedpixels), 4)]
     return images, masks
 
-def prepare_dataloader(train_image_filepath, test_image_filepath, df_filepath, seed, train_transform, test_transform, size, batch_size = 1, shuffle_val_dataloader = False, label = None, data_augmentations = None, grayscale = False):
-    train_df, valid_df = split_data(df_filepath, seed)
+def prepare_dataloader(train_image_filepath,
+                        test_image_filepath,
+                        df_filepath,
+                        seed,
+                        train_transform,
+                        test_transform,
+                        size,
+                        batch_size = 1,
+                        shuffle_train_dataloader = True,
+                        shuffle_val_dataloader = False,
+                        label = None,
+                        data_augmentations = None,
+                        train_proportion = 0.9,
+                        equalise = True,
+                        grayscale = False):
+
+    train_df, valid_df = split_data(df_filepath, seed, train_proportion = train_proportion)
     train_images, train_masks = group_data(train_df, train_image_filepath)
     valid_images, valid_masks = group_data(valid_df, train_image_filepath)
     test_images = [test_image_filepath + '/' + i for i in os.listdir(test_image_filepath)]
-    train_ds = Dataset(train_images, train_masks, size = size, transforms = train_transform, label = label, data_augmentations = data_augmentations, grayscale = grayscale)
-    valid_ds = Dataset(valid_images, valid_masks, size = size, transforms = test_transform, label = label, grayscale = grayscale)
-    test_ds = Dataset(test_images, EncodedPixels = None, transforms = test_transform,  size = size, test = True, label = label, grayscale = grayscale)
+    train_ds = Dataset(train_images, train_masks, size = size, transforms = train_transform, label = label, data_augmentations = data_augmentations, grayscale = grayscale, equalise = equalise)
+    valid_ds = Dataset(valid_images, valid_masks, size = size, transforms = test_transform, label = label, grayscale = grayscale, equalise = equalise)
+    test_ds = Dataset(test_images, EncodedPixels = None, transforms = test_transform,  size = size, test = True, label = label, grayscale = grayscale, equalise = equalise)
 
-    train_dl = data.DataLoader(train_ds, batch_size = batch_size, shuffle = True)
+    train_dl = data.DataLoader(train_ds, batch_size = batch_size, shuffle = shuffle_train_dataloader)
     valid_dl = data.DataLoader(valid_ds, batch_size = batch_size, shuffle = shuffle_val_dataloader)
     test_dl = data.DataLoader(test_ds, batch_size = batch_size, shuffle = False)
 
