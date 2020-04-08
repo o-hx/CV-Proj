@@ -8,6 +8,7 @@ import torchvision
 import cv2
 import random
 import torch.functional as F
+import matplotlib.pyplot as plt
 
 def rle_to_mask(rle_string, width, height):
     '''
@@ -159,7 +160,6 @@ def prepare_dataloader(train_image_filepath,
 
     return train_dl, valid_dl, test_dl
 
-
 if __name__ == "__main__":
 
     cwd = os.getcwd()
@@ -170,7 +170,7 @@ if __name__ == "__main__":
 
     train_transform = torchvision.transforms.Compose([torchvision.transforms.Resize((6*64, 9*64)),
                                                     torchvision.transforms.ToTensor(),
-                                                    torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                                                    #torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
                                                     ])
 
     test_transform = torchvision.transforms.Compose([torchvision.transforms.Resize((6*64, 9*64)),
@@ -181,3 +181,12 @@ if __name__ == "__main__":
                           torchvision.transforms.RandomVerticalFlip(p= 1)]
 
     train_dl, valid_dl, test_dl = prepare_dataloader(train_image_filepath, test_image_filepath, df_filepath, seed, train_transform, test_transform, 256, 64, label = ['fish'], data_augmentations = data_augmentations, grayscale = True)
+
+    for idx, X in enumerate(train_dl):
+        x, mask = X
+        trans = torchvision.transforms.ToPILImage()
+        print(x.shape)
+        img = np.array(trans(x[0]))
+        plt.imshow(img)
+        plt.show()
+        break
