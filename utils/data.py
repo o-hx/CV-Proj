@@ -104,9 +104,10 @@ def histogram_equalize(filepath, equalise = False, grayscale = False):
         equ_b = cv2.equalizeHist(b)
         equ_g = cv2.equalizeHist(g)
         equ_r = cv2.equalizeHist(r)
-        equ = cv2.merge((equ_b, equ_g, equ_r))
+        equ = cv2.merge(( equ_r,  equ_g, equ_b))
         img = Image.fromarray(equ)
     else:
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(img)
     return img
 
@@ -180,7 +181,7 @@ if __name__ == "__main__":
     data_augmentations = [torchvision.transforms.RandomHorizontalFlip(p= 1), 
                           torchvision.transforms.RandomVerticalFlip(p= 1)]
 
-    train_dl, valid_dl, test_dl = prepare_dataloader(train_image_filepath, test_image_filepath, df_filepath, seed, train_transform, test_transform, 256, 64, label = ['fish'], data_augmentations = data_augmentations, grayscale = True)
+    train_dl, valid_dl, test_dl = prepare_dataloader(train_image_filepath, test_image_filepath, df_filepath, seed, train_transform, test_transform, 256, 64, label = ['fish'], data_augmentations = data_augmentations, grayscale = False, equalise = True)
 
     for idx, X in enumerate(train_dl):
         x, mask = X
