@@ -10,6 +10,7 @@ import re
 from utils.data import prepare_dataloader
 from utils.train import train_model, log_print
 from utils.sheets_upload import upload_google_sheets
+from models import BinaryFocalLoss
 
 def get_module_name(obj):
     try:
@@ -34,9 +35,9 @@ if __name__ == '__main__':
     test_image_filepath = os.path.join(cwd,'data','test_images')
     df_filepath = os.path.join(cwd,'data','train.csv')
     seed = 2
-    batch_size = 8
+    batch_size = 12
     img_size = (int(4*64), int(6*64))
-    start_lr = 0.001
+    start_lr = 0.0005
     classes = ['fish']
     iou_threshold = 0.5
     total_epochs = 10
@@ -66,9 +67,9 @@ if __name__ == '__main__':
                                                                                 grayscale = grayscale)
 
     # Define Model
-    segmentation_model = smp.FPN('se_resnet50', encoder_weights='imagenet',classes=len(classes), activation='sigmoid')
+    segmentation_model = smp.Unet('se_resnet50', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type='scse')
     # segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','dlv3_se_resnet50_current_model.pth'))
-    model_save_prefix = get_module_name(segmentation_model) + get_module_name(segmentation_model.encoder) + '_'
+    model_save_prefix = get_module_name(segmentation_model) + '_' + get_module_name(segmentation_model.encoder) + '_'
 
     params = dict(
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
@@ -76,7 +77,7 @@ if __name__ == '__main__':
     )
 
     # Define Loss and Accuracy Metric
-    loss = smp.utils.losses.DiceLoss() + smp.utils.losses.BCELoss()
+    loss = BinaryFocalLoss(gamma=2., multiplier=2.) + smp.utils.losses.DiceLoss()
     metrics = [
         smp.utils.metrics.IoU(threshold=iou_threshold),
     ]
@@ -87,8 +88,8 @@ if __name__ == '__main__':
     ])
 
     # Scheduler
-    # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 10, T_mult=1, eta_min=0)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size =1, gamma=0.8)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 10, T_mult=1, eta_min=0)
+    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size =1, gamma=0.8)
 
     losses, metric_values, best_epoch = train_model(train_dataloader = train_dataloader,
                                         validation_dataloader = validation_dataloader,

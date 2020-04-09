@@ -298,6 +298,8 @@ def validate_and_plot(validation_dataloader,
                     threshold = 0.5
                     ):
     # Plots the top N images in terms of IoU scores
+
+    # Helper function to return the image, the predicted mask and the actual mask for any datapoint
     def _get_image_mask(data, model, class_idx):
         aug_data, org_data = data
         inputs = aug_data[0].to(device)
@@ -312,6 +314,7 @@ def validate_and_plot(validation_dataloader,
         img = np.array(trans(img))
         return img, mask_pred, mask
 
+    # Helper function to plot mask and original pictures
     def _plot_topn(rank, metric_info, low_high_str):
         fig, ax = plt.subplots(2*len(metrics),len(classes), figsize=(7*len(classes), 10*len(metrics)))
         for class_idx, _class in enumerate(classes):
