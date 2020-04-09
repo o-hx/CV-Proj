@@ -69,7 +69,7 @@ class Dataset(data.Dataset):
             trans = torchvision.transforms.ToPILImage()
             trans1 = torchvision.transforms.ToTensor()
             if self.data_augmentations is not None:
-                for t in self.data_augmentations:
+                for t in self.data_augmentations: # Perform data augmentation
                     if np.random.random_sample() >= 0.5:
                         X = trans(X)
                         X = t(X)
@@ -81,9 +81,8 @@ class Dataset(data.Dataset):
                             temp_mask = trans1(temp_mask)
                             mask_stack.append(temp_mask)
                         masks = torch.stack(mask_stack)
-                        masks.squeeze_()
-
-            for lab in self.label:
+                        masks.squeeze_()                
+            for lab in self.label: # Only includes the masks provided in self.label
                 if lab not in self.list_of_classes:
                     raise ValueError("Make sure all labels belong to 'fish', 'flower', 'gravel' or 'sugar'")
             masks_to_include = [masks[self.list_of_classes.index(lab), :,:] for lab in self.label]
@@ -125,7 +124,6 @@ def split_data(df_filepath, seed, train_proportion = 0.9):
 
 def group_data(df, image_filepath):
     images = df['image'].tolist()
-
     images = [image_filepath + '/' + images[i] for i in range(0, len(images), 4)]
     encodedpixels = df['EncodedPixels'].tolist()
     masks = [encodedpixels[i:i+4] for i in range(0, len(encodedpixels), 4)]
@@ -145,14 +143,21 @@ def prepare_dataloader(train_image_filepath,
                         data_augmentations = None,
                         train_proportion = 0.9,
                         equalise = True,
-                        grayscale = False):
+                        grayscale = False,
+                        drop_empty = True):
 
     train_df, valid_df = split_data(df_filepath, seed, train_proportion = train_proportion)
+
+    if len(label) < 4 and drop_empty:
+        list_of_all_empties = [set(train_df[(train_df['label'] == lab.title()) & (train_df['EncodedPixels'] == -1)]['image'].tolist())for lab in label]
+        common_empty_images = list(set.intersection(*list_of_all_empties))
+
+    train_df = train_df[~train_df['image'].isin(common_empty_images)]
     train_images, train_masks = group_data(train_df, train_image_filepath)
     valid_images, valid_masks = group_data(valid_df, train_image_filepath)
     test_images = [test_image_filepath + '/' + i for i in os.listdir(test_image_filepath)]
-    train_ds = Dataset(train_images, train_masks, size = size, transforms = train_transform, label = label, data_augmentations = data_augmentations, grayscale = grayscale, equalise = equalise)
-    valid_ds = Dataset(valid_images, valid_masks, size = size, transforms = test_transform, label = label, grayscale = grayscale, equalise = equalise)
+    train_ds = Dataset(train_images, train_masks, size = size, test = False, transforms = train_transform, label = label, data_augmentations = data_augmentations, grayscale = grayscale, equalise = equalise)
+    valid_ds = Dataset(valid_images, valid_masks, size = size, test = False, transforms = test_transform, label = label, grayscale = grayscale, equalise = equalise)
     test_ds = Dataset(test_images, EncodedPixels = None, transforms = test_transform,  size = size, test = True, label = label, grayscale = grayscale, equalise = equalise)
 
     train_dl = data.DataLoader(train_ds, batch_size = batch_size, shuffle = shuffle_train_dataloader)
@@ -171,7 +176,7 @@ if __name__ == "__main__":
 
     train_transform = torchvision.transforms.Compose([torchvision.transforms.Resize((6*64, 9*64)),
                                                     torchvision.transforms.ToTensor(),
-                                                    #torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                                                    torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
                                                     ])
 
     test_transform = torchvision.transforms.Compose([torchvision.transforms.Resize((6*64, 9*64)),
@@ -181,10 +186,12 @@ if __name__ == "__main__":
     data_augmentations = [torchvision.transforms.RandomHorizontalFlip(p= 1), 
                           torchvision.transforms.RandomVerticalFlip(p= 1)]
 
-    train_dl, valid_dl, test_dl = prepare_dataloader(train_image_filepath, test_image_filepath, df_filepath, seed, train_transform, test_transform, 256, 64, label = ['fish'], data_augmentations = data_augmentations, grayscale = False, equalise = True)
+    train_dl, valid_dl, test_dl = prepare_dataloader(train_image_filepath, test_image_filepath, df_filepath, seed, train_transform, test_transform, (6*64, 9*64), 64, label = ['fish', 'gravel'], data_augmentations = data_augmentations, grayscale = False, equalise = True, drop_empty = True)
 
     for idx, X in enumerate(train_dl):
         x, mask = X
+        print(x.shape)
+        print(mask.shape)
         trans = torchvision.transforms.ToPILImage()
         print(x.shape)
         img = np.array(trans(x[0]))
