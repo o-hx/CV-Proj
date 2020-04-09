@@ -129,6 +129,13 @@ def group_data(df, image_filepath):
     masks = [encodedpixels[i:i+4] for i in range(0, len(encodedpixels), 4)]
     return images, masks
 
+def drop_empty_df(df, label):
+    list_of_all_empties = [set(df[(df['label'] == lab.title()) & (df['EncodedPixels'] == -1)]['image'].tolist())for lab in label]
+    common_empty_images = list(set.intersection(*list_of_all_empties))
+    df = df[~df['image'].isin(common_empty_images)]
+    return df
+
+
 def prepare_dataloader(train_image_filepath,
                         test_image_filepath,
                         df_filepath,
@@ -148,23 +155,27 @@ def prepare_dataloader(train_image_filepath,
 
     train_df, valid_df = split_data(df_filepath, seed, train_proportion = train_proportion)
 
+    # Create df that drops image if it does not have any masks in the label provided
     if len(label) < 4 and drop_empty:
-        list_of_all_empties = [set(train_df[(train_df['label'] == lab.title()) & (train_df['EncodedPixels'] == -1)]['image'].tolist())for lab in label]
-        common_empty_images = list(set.intersection(*list_of_all_empties))
+        train_df_no_empty = drop_empty_df(train_df, label)
+        valid_df_no_empty = drop_empty_df(valid_df, label)
 
-    train_df = train_df[~train_df['image'].isin(common_empty_images)]
-    train_images, train_masks = group_data(train_df, train_image_filepath)
+    train_images_no_empty, train_masks_no_empty = group_data(train_df_no_empty, train_image_filepath)
     valid_images, valid_masks = group_data(valid_df, train_image_filepath)
+    valid_images_no_empty, valid_masks_no_empty = group_data(valid_df_no_empty, train_image_filepath)
     test_images = [test_image_filepath + '/' + i for i in os.listdir(test_image_filepath)]
-    train_ds = Dataset(train_images, train_masks, size = size, test = False, transforms = train_transform, label = label, data_augmentations = data_augmentations, grayscale = grayscale, equalise = equalise)
+
+    train_ds = Dataset(train_images_no_empty, train_masks_no_empty, size = size, test = False, transforms = train_transform, label = label, data_augmentations = data_augmentations, grayscale = grayscale, equalise = equalise)
     valid_ds = Dataset(valid_images, valid_masks, size = size, test = False, transforms = test_transform, label = label, grayscale = grayscale, equalise = equalise)
+    valid_ds_no_empty = Dataset(valid_images_no_empty, valid_masks_no_empty, size = size, test = False, transforms = test_transform, label = label, grayscale = grayscale, equalise = equalise)
     test_ds = Dataset(test_images, EncodedPixels = None, transforms = test_transform,  size = size, test = True, label = label, grayscale = grayscale, equalise = equalise)
 
     train_dl = data.DataLoader(train_ds, batch_size = batch_size, shuffle = shuffle_train_dataloader)
     valid_dl = data.DataLoader(valid_ds, batch_size = batch_size, shuffle = shuffle_val_dataloader)
+    valid_dl_no_empty = data.DataLoader(valid_ds_no_empty, batch_size = batch_size, shuffle = shuffle_val_dataloader)
     test_dl = data.DataLoader(test_ds, batch_size = batch_size, shuffle = False)
 
-    return train_dl, valid_dl, test_dl
+    return train_dl, valid_dl, valid_dl_no_empty, test_dl
 
 if __name__ == "__main__":
 
@@ -186,9 +197,31 @@ if __name__ == "__main__":
     data_augmentations = [torchvision.transforms.RandomHorizontalFlip(p= 1), 
                           torchvision.transforms.RandomVerticalFlip(p= 1)]
 
-    train_dl, valid_dl, test_dl = prepare_dataloader(train_image_filepath, test_image_filepath, df_filepath, seed, train_transform, test_transform, (6*64, 9*64), 64, label = ['fish', 'gravel'], data_augmentations = data_augmentations, grayscale = False, equalise = True, drop_empty = True)
+    train_dl, valid_dl, valid_dl_no_empty, test_dl = prepare_dataloader(train_image_filepath, test_image_filepath, df_filepath, seed, train_transform, test_transform, (6*64, 9*64), 64, label = ['fish', 'gravel'], data_augmentations = data_augmentations, grayscale = False, equalise = True, drop_empty = True)
 
     for idx, X in enumerate(train_dl):
+        x, mask = X
+        print(x.shape)
+        print(mask.shape)
+        trans = torchvision.transforms.ToPILImage()
+        print(x.shape)
+        img = np.array(trans(x[0]))
+        plt.imshow(img)
+        plt.show()
+        break
+
+    for idx, X in enumerate(valid_dl):
+        x, mask = X
+        print(x.shape)
+        print(mask.shape)
+        trans = torchvision.transforms.ToPILImage()
+        print(x.shape)
+        img = np.array(trans(x[0]))
+        plt.imshow(img)
+        plt.show()
+        break
+
+    for idx, X in enumerate(test_dl):
         x, mask = X
         print(x.shape)
         print(mask.shape)
