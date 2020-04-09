@@ -77,7 +77,7 @@ if __name__ == '__main__':
     )
 
     # Define Loss and Accuracy Metric
-    loss = BinaryFocalLoss(gamma=2., multiplier=2.) + smp.utils.losses.DiceLoss()
+    loss = BinaryFocalLoss(gamma=2., multiplier=1.) + smp.utils.losses.DiceLoss()
     metrics = [
         smp.utils.metrics.IoU(threshold=iou_threshold),
     ]
