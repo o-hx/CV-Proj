@@ -42,6 +42,7 @@ if __name__ == '__main__':
     iou_threshold = 0.5
     total_epochs = 10
     grayscale = True
+    drop_empty = True
 
     train_transform = torchvision.transforms.Compose([torchvision.transforms.Resize(img_size),
                                                     torchvision.transforms.ToTensor(),
@@ -64,7 +65,9 @@ if __name__ == '__main__':
                                                                                 batch_size = batch_size, 
                                                                                 label = classes, 
                                                                                 data_augmentations = data_augmentations, 
-                                                                                grayscale = grayscale)
+                                                                                grayscale = grayscale,
+                                                                                drop_empty = drop_empty
+                                                                                )
 
     # Define Model
     segmentation_model = smp.Unet('se_resnet50', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type='scse')
@@ -77,7 +80,7 @@ if __name__ == '__main__':
     )
 
     # Define Loss and Accuracy Metric
-    loss = BinaryFocalLoss(gamma=2., multiplier=1.) + smp.utils.losses.DiceLoss()
+    loss = BinaryFocalLoss(gamma=2.) + smp.utils.losses.DiceLoss()
     metrics = [
         smp.utils.metrics.IoU(threshold=iou_threshold),
     ]
@@ -118,6 +121,7 @@ if __name__ == '__main__':
         batch_size = batch_size,
         classes = str(classes),
         data_augmentation = str(data_augmentations + [grayscale]),
+        drop_empty = drop_empty,
         loss = loss.__name__,
         start_lr = start_lr,
         optimizer = get_module_name(optimizer),

@@ -34,7 +34,7 @@ def binary_focal_loss_with_logits(logits, y_pred, y, alpha, gamma = 0., threshol
 
 # Loss
 class BinaryFocalLoss(Loss):
-    def __init__(self, gamma = 2., alpha = None, reduction = 'mean', eps = 1e-7, ignore_channels = None, multiplier = 1, **kwargs):
+    def __init__(self, gamma = 2., alpha = None, reduction = 'mean', eps = 1e-7, ignore_channels = None, multiplier = 1., **kwargs):
         super().__init__(**kwargs)
         self.gamma = float(gamma)
         self.alpha = alpha
