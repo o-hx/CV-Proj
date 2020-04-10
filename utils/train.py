@@ -246,14 +246,14 @@ def train_model(train_dataloader,
     ax[0].plot(losses['val'], color = 'orange', label = "Validation Loss")
     ax[0].legend()
 
-    # idx = 0
-    # for _, metric_name in enumerate(metric_names):
-    #     if 'overall' in metric_name: # Only plot for the overall metric and not all metrics
-    #         ax[idx+1].set_title(metric_name)
-    #         ax[idx+1].plot(metric_values['train'][metric_name], color = 'skyblue', label=f"Training {metric_name}")
-    #         ax[idx+1].plot(metric_values['val'][metric_name], color = 'orange', label=f"Validation {metric_name}")
-    #         ax[idx+1].legend()
-    #         idx += 1
+    idx = 0
+    for _, metric_name in enumerate(metric_names):
+        if 'overall' in metric_name: # Only plot for the overall metric and not all metrics
+            ax[idx+1].set_title(metric_name)
+            ax[idx+1].plot(metric_values['train'][metric_name], color = 'skyblue', label=f"Training {metric_name}")
+            ax[idx+1].plot(metric_values['val'][metric_name], color = 'orange', label=f"Validation {metric_name}")
+            ax[idx+1].legend()
+            idx += 1
     
     if not os.path.exists(plots_save_path):
         os.makedirs(plots_save_path)
