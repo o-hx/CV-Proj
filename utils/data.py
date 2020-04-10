@@ -122,7 +122,7 @@ class Dataset(data.Dataset):
             return X
         else:
             masks = self.EncodedPixels[index]
-            masks = np.array([(rle_to_mask(i, 2100, 1400) * 1) for i in masks])
+            masks = np.array([(rle_to_mask(i, 2100, 1400) * 1).astype(float) for i in masks])
 
             if self.data_augmentations is not None:
                 data = {"image": X, "masks": masks}
@@ -231,9 +231,9 @@ def prepare_dataloader(train_image_filepath,
 if __name__ == "__main__":
 
     cwd = os.getcwd()
-    train_image_filepath = f'{cwd}/train_images'
-    test_image_filepath = f'{cwd}/test_images'
-    df_filepath = f'{cwd}/train.csv'
+    train_image_filepath = f'{cwd}/data/train_images'
+    test_image_filepath = f'{cwd}/data/test_images'
+    df_filepath = f'{cwd}/data/train.csv'
     seed = 2
 
     mask_transform = torchvision.transforms.Compose([torchvision.transforms.Resize((6*64, 9*64)),
@@ -253,43 +253,42 @@ if __name__ == "__main__":
 
     train_dl, valid_dl, valid_dl_no_empty, test_dl = prepare_dataloader(train_image_filepath, test_image_filepath, df_filepath, seed, train_transform, test_transform, mask_transform, (6*64, 9*64), 64, label = ['fish', 'gravel'], data_augmentations = data_augmentations, grayscale = False, equalise = True, drop_empty = True)
 
-    for idx, X in enumerate(train_dl):
-        x, mask = X
-        print(x.shape)
-        print(mask.shape)
-        trans = torchvision.transforms.ToPILImage()
-        print(x.shape)
-        img = np.array(trans(x[0]))
-        plt.imshow(img)
-        plt.show()
-        break
+    # for idx, X in enumerate(train_dl):
+    #     x, mask = X
+    #     print(x.shape)
+    #     print(mask.shape)
+    #     trans = torchvision.transforms.ToPILImage()
+    #     print(x.shape)
+    #     img = np.array(trans(x[0]))
+    #     plt.imshow(img)
+    #     plt.show()
+    #     break
 
-    for idx, X in enumerate(valid_dl):
-        x, mask = X
-        print(x.shape)
-        print(mask.shape)
-        trans = torchvision.transforms.ToPILImage()
-        print(x.shape)
-        img = np.array(trans(x[0]))
-        plt.imshow(img)
-        plt.show()
-        break
+    # for idx, X in enumerate(valid_dl):
+    #     x, mask = X
+    #     print(x.shape)
+    #     print(mask.shape)
+    #     trans = torchvision.transforms.ToPILImage()
+    #     print(x.shape)
+    #     img = np.array(trans(x[0]))
+    #     plt.imshow(img)
+    #     plt.show()
+    #     break
 
-    for idx, X in enumerate(valid_dl_no_empty):
-        x, mask = X
-        print(x.shape)
-        print(mask.shape)
-        trans = torchvision.transforms.ToPILImage()
-        print(x.shape)
-        img = np.array(trans(x[0]))
-        plt.imshow(img)
-        plt.show()
-        break
+    # for idx, X in enumerate(valid_dl_no_empty):
+    #     x, mask = X
+    #     print(x.shape)
+    #     print(mask.shape)
+    #     trans = torchvision.transforms.ToPILImage()
+    #     print(x.shape)
+    #     img = np.array(trans(x[0]))
+    #     plt.imshow(img)
+    #     plt.show()
+    #     break
 
     for idx, X in enumerate(test_dl):
-        x, mask = X
+        x = X
         print(x.shape)
-        print(mask.shape)
         trans = torchvision.transforms.ToPILImage()
         print(x.shape)
         img = np.array(trans(x[0]))

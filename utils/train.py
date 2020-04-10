@@ -69,7 +69,8 @@ class Epoch:
             for x, y in iterator:
                 x, y = x.to(self.device), y.to(self.device)
                 loss, y_pred = self.batch_update(x, y)
-
+                print(y_pred.shape)
+                print(y.shape)
                 # update loss logs
                 loss_value = loss.cpu().detach().numpy()
                 loss_meter.add(loss_value)
