@@ -7,7 +7,7 @@ import segmentation_models_pytorch as smp
 import torchvision
 import re
 
-from utils.data import prepare_dataloader
+from utils.data import prepare_dataloader, get_augmentations
 from utils.train import train_model, log_print
 from utils.sheets_upload import upload_google_sheets
 from models import BinaryFocalLoss
@@ -35,7 +35,7 @@ if __name__ == '__main__':
     test_image_filepath = os.path.join(cwd,'data','test_images')
     df_filepath = os.path.join(cwd,'data','train.csv')
     seed = 2
-    batch_size = 6
+    batch_size = 2
     img_size = (int(4*64), int(6*64))
     start_lr = 0.001
     classes = ['fish']
@@ -43,6 +43,10 @@ if __name__ == '__main__':
     total_epochs = 10
     grayscale = True
     drop_empty = True
+
+    mask_transform = torchvision.transforms.Compose([torchvision.transforms.Resize(img_size),
+                                                    torchvision.transforms.ToTensor()
+                                                    ])
 
     train_transform = torchvision.transforms.Compose([torchvision.transforms.Resize(img_size),
                                                     torchvision.transforms.ToTensor(),
@@ -52,22 +56,22 @@ if __name__ == '__main__':
                                                     torchvision.transforms.ToTensor(),
                                                     torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
-    data_augmentations = [torchvision.transforms.RandomHorizontalFlip(p= 1),
-                          torchvision.transforms.RandomVerticalFlip(p= 1)]
+    data_augmentations = get_augmentations()
 
-    train_dataloader, validation_dataloader, valid_dl_no_empty, test_dataloader = prepare_dataloader(train_image_filepath,
-                                                                                                    test_image_filepath,
-                                                                                                    df_filepath,
-                                                                                                    seed,
-                                                                                                    train_transform,
-                                                                                                    test_transform,
-                                                                                                    size = img_size,
-                                                                                                    batch_size = batch_size, 
-                                                                                                    label = classes, 
-                                                                                                    data_augmentations = data_augmentations, 
-                                                                                                    grayscale = grayscale,
-                                                                                                    drop_empty = drop_empty
-                                                                                                    )
+    train_dataloader, validation_dataloader, valid_dl_no_empty, test_dataloader = prepare_dataloader(train_image_filepath = train_image_filepath,
+                                                                                test_image_filepath = test_image_filepath,
+                                                                                df_filepath =df_filepath,
+                                                                                seed = seed,
+                                                                                train_transform = train_transform,
+                                                                                test_transform = test_transform,
+                                                                                mask_transform= mask_transform,
+                                                                                size = img_size,
+                                                                                batch_size = batch_size, 
+                                                                                label = classes, 
+                                                                                data_augmentations = data_augmentations, 
+                                                                                grayscale = grayscale,
+                                                                                drop_empty = drop_empty
+                                                                                )
 
     # Define Model
     segmentation_model = smp.Unet('efficientnet-b2', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type='scse')
