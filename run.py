@@ -35,9 +35,9 @@ if __name__ == '__main__':
     test_image_filepath = os.path.join(cwd,'data','test_images')
     df_filepath = os.path.join(cwd,'data','train.csv')
     seed = 2
-    batch_size = 12
+    batch_size = 6
     img_size = (int(4*64), int(6*64))
-    start_lr = 0.0005
+    start_lr = 0.001
     classes = ['fish']
     iou_threshold = 0.5
     total_epochs = 10
@@ -55,22 +55,22 @@ if __name__ == '__main__':
     data_augmentations = [torchvision.transforms.RandomHorizontalFlip(p= 1),
                           torchvision.transforms.RandomVerticalFlip(p= 1)]
 
-    train_dataloader, validation_dataloader, test_dataloader = prepare_dataloader(train_image_filepath,
-                                                                                test_image_filepath,
-                                                                                df_filepath,
-                                                                                seed,
-                                                                                train_transform,
-                                                                                test_transform,
-                                                                                size = img_size,
-                                                                                batch_size = batch_size, 
-                                                                                label = classes, 
-                                                                                data_augmentations = data_augmentations, 
-                                                                                grayscale = grayscale,
-                                                                                drop_empty = drop_empty
-                                                                                )
+    train_dataloader, validation_dataloader, valid_dl_no_empty, test_dataloader = prepare_dataloader(train_image_filepath,
+                                                                                                    test_image_filepath,
+                                                                                                    df_filepath,
+                                                                                                    seed,
+                                                                                                    train_transform,
+                                                                                                    test_transform,
+                                                                                                    size = img_size,
+                                                                                                    batch_size = batch_size, 
+                                                                                                    label = classes, 
+                                                                                                    data_augmentations = data_augmentations, 
+                                                                                                    grayscale = grayscale,
+                                                                                                    drop_empty = drop_empty
+                                                                                                    )
 
     # Define Model
-    segmentation_model = smp.Unet('se_resnet50', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type='scse')
+    segmentation_model = smp.Unet('efficientnet-b2', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type='scse')
     # segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','dlv3_se_resnet50_current_model.pth'))
     model_save_prefix = get_module_name(segmentation_model) + '_' + get_module_name(segmentation_model.encoder) + '_'
 
@@ -80,9 +80,10 @@ if __name__ == '__main__':
     )
 
     # Define Loss and Accuracy Metric
-    loss = BinaryFocalLoss(gamma=2.) + smp.utils.losses.DiceLoss()
+    loss = smp.utils.losses.DiceLoss() + smp.utils.losses.BCELoss() #BinaryFocalLoss(gamma = 2.)
     metrics = [
         smp.utils.metrics.IoU(threshold=iou_threshold),
+        smp.utils.metrics.Precision(threshold=iou_threshold)
     ]
 
     # Define optimizer
