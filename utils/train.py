@@ -246,12 +246,14 @@ def train_model(train_dataloader,
     ax[0].plot(losses['val'], color = 'orange', label = "Validation Loss")
     ax[0].legend()
 
-    for idx, metric_name in enumerate(metric_names):
-        if 'overall' in metric_name: # Only plot for the overall metric and not all metrics
-            ax[idx+1].set_title(metric_name)
-            ax[idx+1].plot(metric_values['train'][metric_name], color = 'skyblue', label=f"Training {metric_name}")
-            ax[idx+1].plot(metric_values['val'][metric_name], color = 'orange', label=f"Validation {metric_name}")
-            ax[idx+1].legend()
+    # idx = 0
+    # for _, metric_name in enumerate(metric_names):
+    #     if 'overall' in metric_name: # Only plot for the overall metric and not all metrics
+    #         ax[idx+1].set_title(metric_name)
+    #         ax[idx+1].plot(metric_values['train'][metric_name], color = 'skyblue', label=f"Training {metric_name}")
+    #         ax[idx+1].plot(metric_values['val'][metric_name], color = 'orange', label=f"Validation {metric_name}")
+    #         ax[idx+1].legend()
+    #         idx += 1
     
     if not os.path.exists(plots_save_path):
         os.makedirs(plots_save_path)
@@ -320,15 +322,25 @@ def validate_and_plot(validation_dataloader,
         for class_idx, _class in enumerate(classes):
             for m_idx, metric in enumerate(metrics):
                 # Plot the Ground Truth
-                ax[m_idx*2,class_idx].imshow(metric_info[_class,metric.__name__][rank][0])
-                ax[m_idx*2,class_idx].imshow(metric_info[_class,metric.__name__][rank][2], alpha=0.3, cmap='gray')
-                ax[m_idx*2,class_idx].set_title(f'{_class} Ground Truth {metric.__name__}:{metric_info[_class,metric.__name__][rank][3]:.3f}', fontsize=12)
+                if len(classes) > 1:
+                    ax[m_idx*2,class_idx].imshow(metric_info[_class,metric.__name__][rank][0])
+                    ax[m_idx*2,class_idx].imshow(metric_info[_class,metric.__name__][rank][2], alpha=0.3, cmap='gray')
+                    ax[m_idx*2,class_idx].set_title(f'{_class} Ground Truth {metric.__name__}:{metric_info[_class,metric.__name__][rank][3]:.3f}', fontsize=12)
 
-                # Plot the picture and the masks
-                ax[m_idx*2+1,class_idx].imshow(metric_info[_class,metric.__name__][rank][0])
-                ax[m_idx*2+1,class_idx].imshow(metric_info[_class,metric.__name__][rank][1], alpha=0.3, cmap='gray')
-                ax[m_idx*2+1,class_idx].set_title(f'{_class} Prediction {metric.__name__}:{metric_info[_class,metric.__name__][rank][3]:.3f}', fontsize=12)
+                    # Plot the picture and the masks
+                    ax[m_idx*2+1,class_idx].imshow(metric_info[_class,metric.__name__][rank][0])
+                    ax[m_idx*2+1,class_idx].imshow(metric_info[_class,metric.__name__][rank][1], alpha=0.3, cmap='gray')
+                    ax[m_idx*2+1,class_idx].set_title(f'{_class} Prediction {metric.__name__}:{metric_info[_class,metric.__name__][rank][3]:.3f}', fontsize=12)
+                else:
+                    ax[m_idx*2].imshow(metric_info[_class,metric.__name__][rank][0])
+                    ax[m_idx*2].imshow(metric_info[_class,metric.__name__][rank][2], alpha=0.3, cmap='gray')
+                    ax[m_idx*2].set_title(f'{_class} Ground Truth {metric.__name__}:{metric_info[_class,metric.__name__][rank][3]:.3f}', fontsize=12)
 
+                    # Plot the picture and the masks
+                    ax[m_idx*2+1].imshow(metric_info[_class,metric.__name__][rank][0])
+                    ax[m_idx*2+1].imshow(metric_info[_class,metric.__name__][rank][1], alpha=0.3, cmap='gray')
+                    ax[m_idx*2+1].set_title(f'{_class} Prediction {metric.__name__}:{metric_info[_class,metric.__name__][rank][3]:.3f}', fontsize=12)
+                
         current_time = str(dt.datetime.now())[0:10].replace('-','_')
         if not os.path.exists(os.path.join(plots_save_path,current_time)):
             os.makedirs(os.path.join(plots_save_path,current_time))
@@ -379,7 +391,7 @@ def validate_and_plot(validation_dataloader,
             for class_idx, _class in enumerate(classes):
                 for metric in metrics:
                     if data_idx in lowest[_class,metric.__name__].keys():
-                        img, mask_pred, mask = _get_image_mask(data, model, class_idx) 
+                        img, mask_pred, mask = _get_image_mask(data, model, class_idx)
                         rank = lowest[_class,metric.__name__][data_idx][0]
                         metric_value = lowest[_class,metric.__name__][data_idx][1]
                         lowest_processed[_class,metric.__name__][rank] = (img, mask_pred, mask, metric_value)
