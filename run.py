@@ -44,6 +44,10 @@ if __name__ == '__main__':
     grayscale = True
     drop_empty = True
 
+    mask_transform = torchvision.transforms.Compose([torchvision.transforms.Resize((6*64, 9*64)),
+                                                    torchvision.transforms.ToTensor()
+                                                    ])
+
     train_transform = torchvision.transforms.Compose([torchvision.transforms.Resize(img_size),
                                                     torchvision.transforms.ToTensor(),
                                                     torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
@@ -55,19 +59,21 @@ if __name__ == '__main__':
     data_augmentations = [torchvision.transforms.RandomHorizontalFlip(p= 1),
                           torchvision.transforms.RandomVerticalFlip(p= 1)]
 
-    train_dataloader, validation_dataloader, valid_dl_no_empty, test_dataloader = prepare_dataloader(train_image_filepath,
-                                                                                                    test_image_filepath,
-                                                                                                    df_filepath,
-                                                                                                    seed,
-                                                                                                    train_transform,
-                                                                                                    test_transform,
-                                                                                                    size = img_size,
-                                                                                                    batch_size = batch_size, 
-                                                                                                    label = classes, 
-                                                                                                    data_augmentations = data_augmentations, 
-                                                                                                    grayscale = grayscale,
-                                                                                                    drop_empty = drop_empty
-                                                                                                    )
+
+    train_dataloader, validation_dataloader, valid_dl_no_empty, test_dataloader = prepare_dataloader(train_image_filepath = train_image_filepath,
+                                                                                test_image_filepath = test_image_filepath,
+                                                                                df_filepath =df_filepath,
+                                                                                seed = seed,
+                                                                                train_transform = train_transform,
+                                                                                test_transform = test_transform,
+                                                                                mask_transform= mask_transform
+                                                                                size = img_size,
+                                                                                batch_size = batch_size, 
+                                                                                label = classes, 
+                                                                                data_augmentations = data_augmentations, 
+                                                                                grayscale = grayscale,
+                                                                                drop_empty = drop_empty
+                                                                                )
 
     # Define Model
     segmentation_model = smp.Unet('efficientnet-b2', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type='scse')
