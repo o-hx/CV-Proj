@@ -148,7 +148,7 @@ class ValidEpoch(Epoch):
         return loss, prediction
 
 def train_model(train_dataloader,
-                validation_dataloader,
+                validation_dataloader_list,
                 model,
                 loss,
                 metrics,
@@ -164,6 +164,8 @@ def train_model(train_dataloader,
                 model_save_prefix = '',
                 plots_save_path = os.path.join(os.getcwd(),'plots')
                 ):
+    if type(validation_dataloader_list) != list:
+        raise TypeError('validation_dataloader_list must be a list of validation dataloaders')
 
     if torch.cuda.is_available():
         log_print('Using GPU', logger)
@@ -194,8 +196,8 @@ def train_model(train_dataloader,
 
     # Record for plotting
     metric_names = [f'{metric.__name__}_{_class}' for metric in metrics for _class in ['overall'] + classes]
-    losses = {'train':[],'val':[]}
-    metric_values = {'train':{name:[] for name in metric_names},'val':{name:[] for name in metric_names}}
+    losses = {'train':[],'val':{idx:[] for idx in range(len(validation_dataloader_list))}}
+    metric_values = {'train':{name:[] for name in metric_names},'val':{idx:{name:[] for name in metric_names} for idx in range(len(validation_dataloader_list))}}
 
     # Run Epochs
     best_perfmeasure = 0
@@ -211,10 +213,12 @@ def train_model(train_dataloader,
         for metric in metric_names:
             metric_values['train'][metric].append(train_logs[metric])
 
-        valid_logs = valid_epoch.run(validation_dataloader)
-        losses['val'].append(valid_logs['loss'])
-        for metric in metric_names:
-            metric_values['val'][metric].append(valid_logs[metric])
+        valid_logs = {}
+        for valid_idx, validation_dataloader in enumerate(validation_dataloader_list):
+            valid_logs[valid_idx] = valid_epoch.run(validation_dataloader)
+            losses['val'][valid_idx].append(valid_logs[valid_idx]['loss'])
+            for metric in metric_names:
+                metric_values['val'][valid_idx][metric].append(valid_logs[valid_idx][metric])
 
         if scheduler is not None:
             scheduler.step()
@@ -223,8 +227,8 @@ def train_model(train_dataloader,
         if not os.path.exists(model_save_path):
             os.makedirs(model_save_path)
 
-        if best_perfmeasure < valid_logs[metric_names[0]]: # Right now the metric to be chosen for best_perf_measure is always the first metric
-            best_perfmeasure = valid_logs[metric_names[0]]
+        if best_perfmeasure < valid_logs[0][metric_names[0]]: # Right now the metric to be chosen for best_perf_measure is always the first metric for the first validation dataset
+            best_perfmeasure = valid_logs[0][metric_names[0]]
             best_epoch = epoch
 
             torch.save(model, os.path.join(model_save_path,model_save_prefix + 'best_model.pth'))
@@ -237,12 +241,14 @@ def train_model(train_dataloader,
     log_print(f'Time Taken to train: {dt.datetime.now()-start_time}', logger)
 
     # Implement plotting feature
+    # The code is only meant to work with the top 2 validation datasets, and no more
     fig, ax = plt.subplots(1,(1+len(metrics)), figsize = (5*(1+len(metrics)),5))
-    fig.suptitle(f"Learning Rate: {optimizer.state_dict()['param_groups'][0]['lr']}, Max Epochs: {num_epochs} Batch size: {batch_size}, Metric: {metrics[0].__name__}")
+    fig.suptitle(f"Learning Rate: {optimizer.state_dict()['param_groups'][0]['lr']:.5f}, Max Epochs: {num_epochs} Batch size: {batch_size}, Metric: {metrics[0].__name__}")
 
     ax[0].set_title('Loss Value')
     ax[0].plot(losses['train'], color = 'skyblue', label="Training Loss")
-    ax[0].plot(losses['val'], color = 'orange', label = "Validation Loss")
+    ax[0].plot(losses['val'][0], color = 'orange', label = "Validation Loss")
+    ax[0].plot(losses['val'][1], color = 'green', label = "Validation Loss 2")
     ax[0].legend()
 
     idx = 0
@@ -250,7 +256,8 @@ def train_model(train_dataloader,
         if 'overall' in metric_name: # Only plot for the overall metric and not all metrics
             ax[idx+1].set_title(metric_name)
             ax[idx+1].plot(metric_values['train'][metric_name], color = 'skyblue', label=f"Training {metric_name}")
-            ax[idx+1].plot(metric_values['val'][metric_name], color = 'orange', label=f"Validation {metric_name}")
+            ax[idx+1].plot(metric_values['val'][0][metric_name], color = 'orange', label=f"Validation 1 {metric_name}")
+            ax[idx+1].plot(metric_values['val'][1][metric_name], color = 'green', label=f"Validation 2 {metric_name}")
             ax[idx+1].legend()
             idx += 1
     

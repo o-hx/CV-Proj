@@ -35,12 +35,12 @@ if __name__ == '__main__':
     test_image_filepath = os.path.join(cwd,'data','test_images')
     df_filepath = os.path.join(cwd,'data','train.csv')
     seed = 2
-    batch_size = 2
+    batch_size = 12
     img_size = (int(4*64), int(6*64))
-    start_lr = 0.001
+    start_lr = 0.0005
     classes = ['fish']
     iou_threshold = 0.5
-    total_epochs = 10
+    total_epochs = 1
     grayscale = True
     drop_empty = True
 
@@ -84,7 +84,7 @@ if __name__ == '__main__':
     )
 
     # Define Loss and Accuracy Metric
-    loss = smp.utils.losses.DiceLoss() + smp.utils.losses.BCELoss() #BinaryFocalLoss(gamma = 2.)
+    loss = smp.utils.losses.DiceLoss() + BinaryFocalLoss(gamma = 2.) #+ smp.utils.losses.BCELoss() #BinaryFocalLoss(gamma = 2.)
     metrics = [
         smp.utils.metrics.IoU(threshold=iou_threshold),
         smp.utils.metrics.Precision(threshold=iou_threshold)
@@ -100,7 +100,7 @@ if __name__ == '__main__':
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size =1, gamma=0.8)
 
     losses, metric_values, best_epoch = train_model(train_dataloader = train_dataloader,
-                                        validation_dataloader = validation_dataloader,
+                                        validation_dataloader_list = [valid_dl_no_empty, validation_dataloader],
                                         model = segmentation_model,
                                         loss = loss,
                                         metrics = metrics,
@@ -125,7 +125,7 @@ if __name__ == '__main__':
         image_size = str(img_size),
         batch_size = batch_size,
         classes = str(classes),
-        data_augmentation = str(data_augmentations + [grayscale]),
+        data_augmentation = str(data_augmentations.transforms.transforms).replace('\n','') + f' greyscale = {grayscale}',
         drop_empty = drop_empty,
         loss = loss.__name__,
         start_lr = start_lr,
@@ -134,16 +134,16 @@ if __name__ == '__main__':
         iou_threshold = iou_threshold,
         total_epochs = total_epochs,
         training_loss = losses['train'][-1],
-        validation_loss = losses['val'][-1],
+        validation_loss = losses['val'][0][-1],
         train_iou_overall = metric_values['train']['iou_score_overall'][-1],
-        val_iou_overall = metric_values['val']['iou_score_overall'][-1],
+        val_iou_overall = metric_values['val'][0]['iou_score_overall'][-1],
         train_iou_overall_best = metric_values['train']['iou_score_overall'][best_epoch],
-        val_iou_overall_best = metric_values['val']['iou_score_overall'][best_epoch]
+        val_iou_overall_best = metric_values['val'][0]['iou_score_overall'][best_epoch]
     )
 
     for _class in classes:
         result[f'train_iou_score_{_class}'] = metric_values['train'][f'iou_score_{_class}'][-1]
-        result[f'val_iou_score_{_class}'] = metric_values['val'][f'iou_score_{_class}'][-1]
-        result[f'val_iou_score_{_class}_best'] = metric_values['val'][f'iou_score_{_class}'][best_epoch]
+        result[f'val_iou_score_{_class}'] = metric_values['val'][0][f'iou_score_{_class}'][-1]
+        result[f'val_iou_score_{_class}_best'] = metric_values['val'][0][f'iou_score_{_class}'][best_epoch]
     
     upload_google_sheets(result, logger = logging)
