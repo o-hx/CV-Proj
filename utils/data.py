@@ -139,7 +139,7 @@ class Dataset(data.Dataset):
                 if lab not in self.list_of_classes:
                     raise ValueError("Make sure all labels belong to 'fish', 'flower', 'gravel' or 'sugar'")
             masks_to_include = [masks[self.list_of_classes.index(lab), :,:] for lab in self.label]
-            masks = torch.stack(masks_to_include)
+            masks = torch.squeeze(torch.stack(masks_to_include), 1)
             return X, masks
 
 def histogram_equalize(filepath, equalise = False, grayscale = False):
@@ -251,18 +251,18 @@ if __name__ == "__main__":
 
     data_augmentations = get_augmentations()
 
-    train_dl, valid_dl, valid_dl_no_empty, test_dl = prepare_dataloader(train_image_filepath, test_image_filepath, df_filepath, seed, train_transform, test_transform, mask_transform, (6*64, 9*64), 64, label = ['fish', 'gravel'], data_augmentations = data_augmentations, grayscale = False, equalise = True, drop_empty = True)
+    train_dl, valid_dl, valid_dl_no_empty, test_dl = prepare_dataloader(train_image_filepath, test_image_filepath, df_filepath, seed, train_transform, test_transform, mask_transform, (6*64, 9*64), 16, label = ['fish'], data_augmentations = data_augmentations, grayscale = False, equalise = True, drop_empty = True)
 
-    # for idx, X in enumerate(train_dl):
-    #     x, mask = X
-    #     print(x.shape)
-    #     print(mask.shape)
-    #     trans = torchvision.transforms.ToPILImage()
-    #     print(x.shape)
-    #     img = np.array(trans(x[0]))
-    #     plt.imshow(img)
-    #     plt.show()
-    #     break
+    for idx, X in enumerate(train_dl):
+        x, mask = X
+        print(x.shape)
+        print(mask.shape)
+        trans = torchvision.transforms.ToPILImage()
+        print(x.shape)
+        img = np.array(trans(x[0]))
+        plt.imshow(img)
+        plt.show()
+        break
 
     # for idx, X in enumerate(valid_dl):
     #     x, mask = X
@@ -286,12 +286,12 @@ if __name__ == "__main__":
     #     plt.show()
     #     break
 
-    for idx, X in enumerate(test_dl):
-        x = X
-        print(x.shape)
-        trans = torchvision.transforms.ToPILImage()
-        print(x.shape)
-        img = np.array(trans(x[0]))
-        plt.imshow(img)
-        plt.show()
-        break
+    # for idx, X in enumerate(test_dl):
+    #     x = X
+    #     print(x.shape)
+    #     trans = torchvision.transforms.ToPILImage()
+    #     print(x.shape)
+    #     img = np.array(trans(x[0]))
+    #     plt.imshow(img)
+    #     plt.show()
+    #     break
