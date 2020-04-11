@@ -268,9 +268,9 @@ def train_model(train_dataloader,
     log_print(f'Time Taken to train: {dt.datetime.now()-start_time}', logger)
 
     # Sum up confusion matrix along all batches
-    confusion_matrices['train'] = np.array(confusion_matrices['train']).sum(axis = 0)
+    confusion_matrices['train'] = np.array(confusion_matrices['train']).mean(axis = 0)
     for valid_idx in range(len(validation_dataloader_list)):
-        confusion_matrices['val'][valid_idx] = np.array(confusion_matrices['val'][valid_idx]).sum(axis = 0)
+        confusion_matrices['val'][valid_idx] = np.array(confusion_matrices['val'][valid_idx]).mean(axis = 0)
     for i in range(len(classes)):
         log_print(f"Confusion Matrix of {classes[i]}, TN: {confusion_matrices['val'][0][i,0]}. FP: {confusion_matrices['val'][0][i,1]}, FN: {confusion_matrices['val'][0][i,2]}, TP: {confusion_matrices['val'][0][i,3]}", logger)
 
@@ -282,7 +282,8 @@ def train_model(train_dataloader,
     ax[0].set_title('Loss Value')
     ax[0].plot(losses['train'], color = 'skyblue', label="Training Loss")
     ax[0].plot(losses['val'][0], color = 'orange', label = "Validation Loss")
-    ax[0].plot(losses['val'][1], color = 'green', label = "Validation Loss 2")
+    if len(validation_dataloader_list) > 1:
+        ax[0].plot(losses['val'][1], color = 'green', label = "Validation Loss 2")
     ax[0].legend()
 
     idx = 0
@@ -291,7 +292,8 @@ def train_model(train_dataloader,
             ax[idx+1].set_title(metric_name)
             ax[idx+1].plot(metric_values['train'][metric_name], color = 'skyblue', label=f"Training {metric_name}")
             ax[idx+1].plot(metric_values['val'][0][metric_name], color = 'orange', label=f"Validation 1 {metric_name}")
-            ax[idx+1].plot(metric_values['val'][1][metric_name], color = 'green', label=f"Validation 2 {metric_name}")
+            if len(validation_dataloader_list) > 1:
+                ax[idx+1].plot(metric_values['val'][1][metric_name], color = 'green', label=f"Validation 2 {metric_name}")
             ax[idx+1].legend()
             idx += 1
     
