@@ -20,6 +20,7 @@ def log_print(text, logger, log_only = False):
         print(text)
     if logger is not None:
         logger.info(text)
+
 class Epoch:
     def __init__(self, model, loss, metrics, stage_name, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True):
         self.model = model
@@ -264,12 +265,14 @@ def train_model(train_dataloader,
 
     log_print(f'Best epoch: {best_epoch} Best Performance Measure: {best_perfmeasure:.5f}', logger)
     log_print(f'Time Taken to train: {dt.datetime.now()-start_time}', logger)
-    # Print the confusion matrix final score
-    # You need to sum up the confusion matrices along one axis first
-    # Print for train, val and val_no_empty
-    #log_print(f"TP: {confusion_matrix[0,0]}. FP: {confusion_matrix[0,1]}, FN: {confusion_matrix[1,0]}, TN: {confusion_matrix[1,1]}", self.logger)
 
-    # Once done save the summed confusion matrices back into the confusion_matrices dictionary
+    # Sum up confusion matrix along all batches
+    print(confusion_matrices)
+    confusion_matrices['train'] = np.array(confusion_matrices['train']).sum(axis = 0)
+    for valid_idx in range(len(validation_dataloader_list)):
+        confusion_matrices['val'][valid_idx] = np.array(confusion_matrices['val'][valid_idx]).sum(axis = 0)
+    for i in range(len(classes)):
+        log_print(f"Confusion Matrix of {classes[i]}, TN: {confusion_matrices['val'][0][i,0]}. FP: {confusion_matrices['val'][0][i,1]}, FN: {confusion_matrices['val'][0][i,2]}, TP: {confusion_matrices['val'][0][i,3]}", logger)
 
     # Implement plotting feature
     # The code is only meant to work with the top 2 validation datasets, and no more
@@ -297,7 +300,7 @@ def train_model(train_dataloader,
     plt.savefig(os.path.join(plots_save_path,"nn_training_" + str(time.ctime()).replace(':','').replace('  ',' ').replace(' ','_') + ".png"))
     log_print('Plot Saved', logger)
 
-    return losses, metric_values, best_epoch#, confusion_matrices
+    return losses, metric_values, best_epoch, confusion_matrices
 
 def test_model(test_dataloader,
                 model,

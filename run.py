@@ -35,12 +35,12 @@ if __name__ == '__main__':
     test_image_filepath = os.path.join(cwd,'data','test_images')
     df_filepath = os.path.join(cwd,'data','train.csv')
     seed = 2
-    batch_size = 16
+    batch_size = 12
     img_size = (int(4*64), int(6*64))
     start_lr = 0.0005
-    classes = ['fish']
+    classes = ['fish','gravel']
     iou_threshold = 0.5
-    total_epochs = 10
+    total_epochs = 2
     grayscale = True
     drop_empty = True
 
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     # Define Model
     segmentation_model = smp.Unet('efficientnet-b2', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type='scse')
     # segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','dlv3_se_resnet50_current_model.pth'))
-    model_save_prefix = get_module_name(segmentation_model) + '_' + get_module_name(segmentation_model.encoder) + '_'
+    model_save_prefix = 'testing_' + get_module_name(segmentation_model) + '_' + get_module_name(segmentation_model.encoder) + '_'
 
     params = dict(
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
@@ -99,23 +99,23 @@ if __name__ == '__main__':
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 10, T_mult=1, eta_min=0)
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size =1, gamma=0.8)
 
-    losses, metric_values, best_epoch = train_model(train_dataloader = train_dataloader,
-                                        validation_dataloader_list = [valid_dl_no_empty, validation_dataloader],
-                                        model = segmentation_model,
-                                        loss = loss,
-                                        metrics = metrics,
-                                        optimizer = optimizer,
-                                        scheduler = scheduler,
-                                        batch_size = batch_size,
-                                        num_epochs = total_epochs,
-                                        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
-                                        classes = classes,
-                                        logger = logging,
-                                        verbose = True,
-                                        model_save_path = os.path.join(os.getcwd(),'weights'),
-                                        model_save_prefix = model_save_prefix,
-                                        plots_save_path = os.path.join(os.getcwd(),'plots')
-                                        )
+    losses, metric_values, best_epoch, confusion_matrices = train_model(train_dataloader = train_dataloader,
+                                                            validation_dataloader_list = [valid_dl_no_empty, validation_dataloader],
+                                                            model = segmentation_model,
+                                                            loss = loss,
+                                                            metrics = metrics,
+                                                            optimizer = optimizer,
+                                                            scheduler = scheduler,
+                                                            batch_size = batch_size,
+                                                            num_epochs = total_epochs,
+                                                            device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+                                                            classes = classes,
+                                                            logger = logging,
+                                                            verbose = True,
+                                                            model_save_path = os.path.join(os.getcwd(),'weights'),
+                                                            model_save_prefix = model_save_prefix,
+                                                            plots_save_path = os.path.join(os.getcwd(),'plots')
+                                                            )
     log_print(f'Completed training and validation', logging)
     
     # Prepare dictionary to update to Google Sheets
@@ -138,7 +138,9 @@ if __name__ == '__main__':
         train_iou_overall = metric_values['train']['iou_score_overall'][-1],
         val_iou_overall = metric_values['val'][0]['iou_score_overall'][-1],
         train_iou_overall_best = metric_values['train']['iou_score_overall'][best_epoch],
-        val_iou_overall_best = metric_values['val'][0]['iou_score_overall'][best_epoch]
+        val_iou_overall_best = metric_values['val'][0]['iou_score_overall'][best_epoch],
+        train_cm = str(confusion_matrices['train']),
+        val_cm = str(confusion_matrices['val'][0]),
     )
 
     for _class in classes:
