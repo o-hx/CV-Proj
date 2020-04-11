@@ -55,7 +55,7 @@ class Epoch:
         # Shape of y and y_pred = (bs, class, height, width)
         # Takes in y and y_pred and returns a class * [tn, fp, fn, tp]  array
         # Remember to threshold the values of y_pred first which are probabilities
-        y = y.cpu().detach().numpy()
+        y = y.cpu().detach().numpy().astype(int)
         y_pred = y_pred.cpu().detach().numpy()
         y_pred = np.where(y_pred > threshold, 1, 0)
 

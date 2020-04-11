@@ -35,7 +35,7 @@ if __name__ == '__main__':
     test_image_filepath = os.path.join(cwd,'data','test_images')
     df_filepath = os.path.join(cwd,'data','train.csv')
     seed = 2
-    batch_size = 16
+    batch_size = 1
     img_size = (int(4*64), int(6*64))
     start_lr = 0.0005
     classes = ['fish']
