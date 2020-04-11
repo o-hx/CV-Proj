@@ -241,7 +241,7 @@ def train_model(train_dataloader,
         for valid_idx, validation_dataloader in enumerate(validation_dataloader_list):
             valid_logs[valid_idx], val_cm = valid_epoch.run(validation_dataloader)
             losses['val'][valid_idx].append(valid_logs[valid_idx]['loss'])
-            confusion_matrices['train'][valid_idx].append(val_cm)
+            confusion_matrices['val'][valid_idx].append(val_cm)
             for metric in metric_names:
                 metric_values['val'][valid_idx][metric].append(valid_logs[valid_idx][metric])
 
