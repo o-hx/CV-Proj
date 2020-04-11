@@ -40,7 +40,7 @@ if __name__ == '__main__':
     start_lr = 0.0005
     classes = ['fish','gravel']
     iou_threshold = 0.5
-    total_epochs = 2
+    total_epochs = 10
     grayscale = True
     drop_empty = True
 
