@@ -29,7 +29,6 @@ if __name__ == '__main__':
     img_size = (int(4*64), int(6*64))
     classes = ['fish']
     iou_threshold = 0.5
-    total_epochs = 10
     grayscale = True
     drop_empty = True
 
@@ -84,7 +83,7 @@ if __name__ == '__main__':
                                                                                 drop_empty = drop_empty
                                                                                 )
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','Unet_EfficientNetEncoder_best_model.pth'), map_location = device)
+    segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','Unet_EfficientNetEncoder_best_model_DL.pth'), map_location = device)
 
     metrics = [
         smp.utils.metrics.IoU(threshold=iou_threshold),

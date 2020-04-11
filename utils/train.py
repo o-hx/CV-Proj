@@ -51,6 +51,12 @@ class Epoch:
     def on_epoch_start(self):
         pass
 
+    def get_confusion_matrix(self, y_pred, y, threshold = 0.5):
+        # Takes in y and y_pred and returns a 2*2 array
+        # Remember to threshold the values of y_pred first which are probabilities
+
+        return [[0,0],[0,0]] # Edit this
+
     def run(self, dataloader):
 
         self.on_epoch_start()
@@ -92,11 +98,15 @@ class Epoch:
                     s = self._format_logs(logs)
                     iterator.set_postfix_str(s)
 
+                # compute confusion matrix
+                confusion_matrix = self.get_confusion_matrix(y_pred, y)
+
         cumulative_logs = {k: v.sum/v.n for k, v in metrics_meters.items()}
         cumulative_logs['loss'] = loss_meter.sum/loss_meter.n
         log_print(" ".join([f"{k}:{v:.4f}" for k, v in cumulative_logs.items()]), self.logger)
+        log_print(f"TP: {confusion_matrix[0,0]}. FP: {confusion_matrix[0,1]}, FN: {confusion_matrix[1,0]}, TN: {confusion_matrix[1,1]}", self.logger)
 
-        return cumulative_logs
+        return cumulative_logs, confusion_matrix
 
 class TrainEpoch(Epoch):
     def __init__(self, model, loss, metrics, optimizer, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True):
@@ -198,6 +208,7 @@ def train_model(train_dataloader,
     metric_names = [f'{metric.__name__}_{_class}' for metric in metrics for _class in ['overall'] + classes]
     losses = {'train':[],'val':{idx:[] for idx in range(len(validation_dataloader_list))}}
     metric_values = {'train':{name:[] for name in metric_names},'val':{idx:{name:[] for name in metric_names} for idx in range(len(validation_dataloader_list))}}
+    confusion_matrices = {'train':[],'val':{idx:[] for idx in range(len(validation_dataloader_list))}}
 
     # Run Epochs
     best_perfmeasure = 0
@@ -208,15 +219,17 @@ def train_model(train_dataloader,
     for epoch in range(num_epochs):
         log_print(f'\nEpoch: {epoch}', logger)
 
-        train_logs = train_epoch.run(train_dataloader)
+        train_logs, train_cm = train_epoch.run(train_dataloader)
         losses['train'].append(train_logs['loss'])
+        confusion_matrices['train'].append(train_cm)
         for metric in metric_names:
             metric_values['train'][metric].append(train_logs[metric])
 
         valid_logs = {}
         for valid_idx, validation_dataloader in enumerate(validation_dataloader_list):
-            valid_logs[valid_idx] = valid_epoch.run(validation_dataloader)
+            valid_logs[valid_idx], val_cm = valid_epoch.run(validation_dataloader)
             losses['val'][valid_idx].append(valid_logs[valid_idx]['loss'])
+            confusion_matrices['train'][valid_idx].append(val_cm)
             for metric in metric_names:
                 metric_values['val'][valid_idx][metric].append(valid_logs[valid_idx][metric])
 
@@ -239,6 +252,12 @@ def train_model(train_dataloader,
 
     log_print(f'Best epoch: {best_epoch} Best Performance Measure: {best_perfmeasure:.5f}', logger)
     log_print(f'Time Taken to train: {dt.datetime.now()-start_time}', logger)
+    # Print the confusion matrix final score
+    # You need to sum up the confusion matrices along one axis first
+    # Print for train, val and val_no_empty
+    #log_print(f"TP: {confusion_matrix[0,0]}. FP: {confusion_matrix[0,1]}, FN: {confusion_matrix[1,0]}, TN: {confusion_matrix[1,1]}", self.logger)
+
+    # Once done save the summed confusion matrices back into the confusion_matrices dictionary
 
     # Implement plotting feature
     # The code is only meant to work with the top 2 validation datasets, and no more
@@ -266,7 +285,7 @@ def train_model(train_dataloader,
     plt.savefig(os.path.join(plots_save_path,"nn_training_" + str(time.ctime()).replace(':','').replace('  ',' ').replace(' ','_') + ".png"))
     log_print('Plot Saved', logger)
 
-    return losses, metric_values, best_epoch
+    return losses, metric_values, best_epoch#, confusion_matrices
 
 def test_model(test_dataloader,
                 model,
