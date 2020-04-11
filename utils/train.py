@@ -20,7 +20,6 @@ def log_print(text, logger, log_only = False):
         print(text)
     if logger is not None:
         logger.info(text)
-
 class Epoch:
     def __init__(self, model, loss, metrics, stage_name, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True):
         self.model = model
@@ -88,8 +87,6 @@ class Epoch:
             for x, y in iterator:
                 x, y = x.to(self.device), y.to(self.device)
                 loss, y_pred = self.batch_update(x, y)
-                print(y_pred.shape)
-                print(y.shape)
                 # update loss logs
                 loss_value = loss.cpu().detach().numpy()
                 loss_meter.add(loss_value)
