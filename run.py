@@ -35,7 +35,7 @@ if __name__ == '__main__':
     test_image_filepath = os.path.join(cwd,'data','test_images')
     df_filepath = os.path.join(cwd,'data','train.csv')
     seed = 2
-    batch_size = 12
+    batch_size = 16
     img_size = (int(4*64), int(6*64))
     start_lr = 0.0005
     classes = ['fish']
@@ -56,7 +56,7 @@ if __name__ == '__main__':
                                                     torchvision.transforms.ToTensor(),
                                                     torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
-    data_augmentations = get_augmentations()
+    data_augmentations = get_augmentations(img_size)
 
     train_dataloader, validation_dataloader, valid_dl_no_empty, test_dataloader = prepare_dataloader(train_image_filepath = train_image_filepath,
                                                                                 test_image_filepath = test_image_filepath,

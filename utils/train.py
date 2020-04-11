@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import time
 import torchvision
 
+from sklearn.metrics import confusion_matrix
 from copy import deepcopy
 from tqdm import tqdm as tqdm
 from segmentation_models_pytorch.utils.meter import AverageValueMeter
@@ -52,10 +53,22 @@ class Epoch:
         pass
 
     def get_confusion_matrix(self, y_pred, y, threshold = 0.5):
-        # Takes in y and y_pred and returns a 2*2 array
+        # Shape of y and y_pred = (bs, class, height, width)
+        # Takes in y and y_pred and returns a class * [tn, fp, fn, tp]  array
         # Remember to threshold the values of y_pred first which are probabilities
+        y = y.cpu().detach().numpy()
+        y_pred = y_pred.cpu().detach().numpy()
+        y_pred = np.where(y_pred > threshold, 1, 0)
 
-        return [[0,0],[0,0]] # Edit this
+        bs, classes, height, width = y.shape
+        y = np.transpose(y, [1,0,2,3]).reshape(classes, -1)        
+        y_pred = np.transpose(y_pred, [1,0,2,3]).reshape(classes, -1)
+
+        cm = []
+        for clas in range(classes):
+            tn, fp, fn, tp = confusion_matrix(y[clas, :], y_pred[clas, :]).ravel()
+            cm.append([tn, fp, fn, tp])
+        return np.array(cm)
 
     def run(self, dataloader):
 
@@ -75,6 +88,8 @@ class Epoch:
             for x, y in iterator:
                 x, y = x.to(self.device), y.to(self.device)
                 loss, y_pred = self.batch_update(x, y)
+                print(y_pred.shape)
+                print(y.shape)
                 # update loss logs
                 loss_value = loss.cpu().detach().numpy()
                 loss_meter.add(loss_value)
@@ -104,8 +119,8 @@ class Epoch:
         cumulative_logs = {k: v.sum/v.n for k, v in metrics_meters.items()}
         cumulative_logs['loss'] = loss_meter.sum/loss_meter.n
         log_print(" ".join([f"{k}:{v:.4f}" for k, v in cumulative_logs.items()]), self.logger)
-        log_print(f"TP: {confusion_matrix[0,0]}. FP: {confusion_matrix[0,1]}, FN: {confusion_matrix[1,0]}, TN: {confusion_matrix[1,1]}", self.logger)
-
+        for i in range(len(self.classes)):
+            log_print(f"Confusion Matrix of {self.classes[i]}, TN: {confusion_matrix[i,0]}. FP: {confusion_matrix[i,1]}, FN: {confusion_matrix[i,2]}, TP: {confusion_matrix[i,3]}", self.logger)
         return cumulative_logs, confusion_matrix
 
 class TrainEpoch(Epoch):

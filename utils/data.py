@@ -23,6 +23,7 @@ from albumentations import (
     RandomRotate90,
     RandomSizedCrop,
     RandomBrightness,
+    Resize,
     ShiftScaleRotate,
     MotionBlur,
     MedianBlur,
@@ -32,24 +33,25 @@ from albumentations import (
     IAAPiecewiseAffine,
     OneOf)
 
-def get_augmentations():
+def get_augmentations(img_size):
+    height, width = img_size
     list_transforms = []
     list_transforms.append(HorizontalFlip())
     list_transforms.append(VerticalFlip())
-    # if phase_config.RandomCropScale:
-    #     if phase_config.Resize.p > 0:
-    #         height = phase_config.Resize.height
-    #         width = phase_config.Resize.width
-    #     else:
-    #         height = HEIGHT
-    #         width = WIDTH
-    #     list_transforms.append(
-    #         RandomSizedCrop(
-    #             min_max_height=(int(height * 0.90), height),
-    #             height=height,
-    #             width=width,
-    #             w2h_ratio=width/height)
-    #     )
+    list_transforms.append(
+        Resize(
+            height = int(height * 1.5),
+            width = int(width * 1.5)
+            )
+    )
+    list_transforms.append(
+        RandomSizedCrop(
+            min_max_height=(int(height * 0.90), height),
+            height=height,
+            width=width,
+            w2h_ratio=width/height)
+    )
+
     list_transforms.append(
         OneOf([
             GaussNoise(),
@@ -95,7 +97,6 @@ def rle_to_mask(rle_string, width, height):
         img = img.reshape(cols,rows)
         img = img.T
         return img
-
 class Dataset(data.Dataset):
     def __init__(self, image_filepath, EncodedPixels, size, transforms = None, mask_transform = None, test = False, equalise = True, label = ['fish', 'flower', 'gravel', 'sugar'], data_augmentations = None, grayscale = False):
         self.image_filepath = image_filepath
@@ -247,6 +248,7 @@ if __name__ == "__main__":
     test_image_filepath = f'{cwd}/data/test_images'
     df_filepath = f'{cwd}/data/train.csv'
     seed = 2
+    img_size = (6*64, 9*64)
 
     mask_transform = torchvision.transforms.Compose([torchvision.transforms.Resize((6*64, 9*64)),
                                                     torchvision.transforms.ToTensor()
@@ -261,7 +263,7 @@ if __name__ == "__main__":
                                                     torchvision.transforms.ToTensor(),
                                                     torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
-    data_augmentations = get_augmentations()
+    data_augmentations = get_augmentations(img_size)
 
     train_dl, valid_dl, valid_dl_no_empty, test_dl = prepare_dataloader(train_image_filepath, test_image_filepath, df_filepath, seed, train_transform, test_transform, mask_transform, (6*64, 9*64), 16, label = ['fish'], data_augmentations = data_augmentations, grayscale = False, equalise = True, drop_empty = False)
 
@@ -270,7 +272,6 @@ if __name__ == "__main__":
         print(x.shape)
         print(mask.shape)
         trans = torchvision.transforms.ToPILImage()
-        print(x.shape)
         img = np.array(trans(x[0]))
         plt.imshow(img)
         plt.show()
