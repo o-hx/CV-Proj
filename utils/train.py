@@ -87,10 +87,8 @@ class Epoch:
             # Run for 1 epoch
             for x, y in iterator:
                 x, y = x.to(self.device), y.to(self.device)
-                loss, y_pred = self.batch_update(x, y)
+                loss_value, y_pred = self.batch_update(x, y)
                 # update loss logs
-                loss_value = loss.cpu().detach().numpy()
-                assert not np.isnan(loss_value), 'Loss cannot be NaN. Please restart'
                 loss_meter.add(loss_value)
                 loss_logs = {self.loss.__name__: loss_meter.mean}
                 logs.update(loss_logs)
@@ -147,7 +145,9 @@ class TrainEpoch(Epoch):
         loss = self.loss(prediction, y)
         loss.backward()
         self.optimizer.step()
-        return loss, prediction
+        loss_value = loss.cpu().detach().numpy()
+        assert not np.isnan(loss_value), 'Loss cannot be NaN. Please restart'
+        return loss_value, prediction
 
 class ValidEpoch(Epoch):
     def __init__(self, model, loss, metrics, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True):
@@ -170,7 +170,8 @@ class ValidEpoch(Epoch):
         with torch.no_grad():
             prediction = self.model.forward(x)
             loss = self.loss(prediction, y)
-        return loss, prediction
+            loss_value = loss.cpu().detach().numpy()
+        return loss_value, prediction
 
 def train_model(train_dataloader,
                 validation_dataloader_list,
