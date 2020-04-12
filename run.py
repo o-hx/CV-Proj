@@ -35,17 +35,17 @@ if __name__ == '__main__':
     test_image_filepath = os.path.join(cwd,'data','test_images')
     df_filepath = os.path.join(cwd,'data','train.csv')
     seed = 2
-    batch_size = 14
+    batch_size = 16
     img_size = (int(4*64), int(6*64))
     start_lr = 0.0005
     classes = ['fish']
     iou_threshold = 0.5
-    total_epochs = 2
+    total_epochs = 10
     grayscale = False
     drop_empty = True
     loss_args = dict(
-        beta = 0.8,
-        gamma = 2.2
+        beta = 1.,
+        gamma = 2.
     )
 
     mask_transform = torchvision.transforms.Compose([torchvision.transforms.Resize(img_size),
