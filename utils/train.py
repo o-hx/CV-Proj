@@ -267,13 +267,6 @@ def train_model(train_dataloader,
     log_print(f'Best epoch: {best_epoch} Best Performance Measure: {best_perfmeasure:.5f}', logger)
     log_print(f'Time Taken to train: {dt.datetime.now()-start_time}', logger)
 
-    # Sum up confusion matrix along all batches
-    confusion_matrices['train'] = confusion_matrices['train'][-1]
-    for valid_idx in range(len(validation_dataloader_list)):
-        confusion_matrices['val'][valid_idx] = confusion_matrices['val'][valid_idx][-1]
-    for i in range(len(classes)):
-        log_print(f"Confusion Matrix of {classes[i]}, TN: {confusion_matrices['val'][0][i,0]}. FP: {confusion_matrices['val'][0][i,1]}, FN: {confusion_matrices['val'][0][i,2]}, TP: {confusion_matrices['val'][0][i,3]}", logger)
-
     # Implement plotting feature
     # The code is only meant to work with the top 2 validation datasets, and no more
     fig, ax = plt.subplots(1,(1+len(metrics)), figsize = (5*(1+len(metrics)),5))
@@ -299,8 +292,50 @@ def train_model(train_dataloader,
     
     if not os.path.exists(plots_save_path):
         os.makedirs(plots_save_path)
-    plt.savefig(os.path.join(plots_save_path,"nn_training_" + str(time.ctime()).replace(':','').replace('  ',' ').replace(' ','_') + ".png"))
-    log_print('Plot Saved', logger)
+    plt.savefig(os.path.join(plots_save_path,"nn_training_" + str(dt.datetime.now())[0:10].replace('-','_') + ".png"))
+    log_print('Metric & Loss Plot Saved', logger)
+    plt.close()
+
+    # Plot another plot for the confusion matrices
+    fig, ax = plt.subplots(len(classes),len(validation_dataloader_list)+1, figsize=(10*(len(validation_dataloader_list)+1), 7*len(classes)))
+    colors = ['black','orange','red','green']
+    for class_idx, _class in enumerate(classes):
+        for clx_idx, classification in enumerate(['TN','FP','FN','TP']):
+            if len(classes) > 1:
+                ax[class_idx,0].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['train']], color = colors[clx_idx], label=f"{classification}")
+                ax[class_idx,0].set_title(f'Training Confusion Matrix', fontsize=12)
+                ax[class_idx,0].legend()
+
+                ax[class_idx,1].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['val'][0]], color = colors[clx_idx], label=f"{classification}")
+                ax[class_idx,1].set_title(f'Val 1 Confusion Matrix', fontsize=12)
+                ax[class_idx,1].legend()
+
+                ax[class_idx,2].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['val'][1]], color = colors[clx_idx], label=f"{classification}")
+                ax[class_idx,2].set_title(f'Val 2 Confusion Matrix', fontsize=12)
+                ax[class_idx,2].legend()
+            else:
+                ax[0].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['train']], color = colors[clx_idx], label=f"{classification}")
+                ax[0].set_title(f'Training Confusion Matrix', fontsize=12)
+                ax[0].legend()
+
+                ax[1].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['val'][0]], color = colors[clx_idx], label=f"{classification}")
+                ax[1].set_title(f'Val 1 Confusion Matrix', fontsize=12)
+                ax[1].legend()
+
+                ax[2].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['val'][1]], color = colors[clx_idx], label=f"{classification}")
+                ax[2].set_title(f'Val 2 Confusion Matrix', fontsize=12)
+                ax[2].legend()
+            
+    fig.suptitle(f'Confusion Matric Plot Across Epochs', fontsize=20)
+    plt.savefig(os.path.join(plots_save_path,"nn_training_cm_" + str(dt.datetime.now())[0:10].replace('-','_') + ".png"))
+    plt.close()
+
+    # Sum up confusion matrix along all batches
+    confusion_matrices['train'] = confusion_matrices['train'][-1]
+    for valid_idx in range(len(validation_dataloader_list)):
+        confusion_matrices['val'][valid_idx] = confusion_matrices['val'][valid_idx][-1]
+    for i in range(len(classes)):
+        log_print(f"Confusion Matrix of {classes[i]}, TN: {confusion_matrices['val'][0][i,0]}. FP: {confusion_matrices['val'][0][i,1]}, FN: {confusion_matrices['val'][0][i,2]}, TP: {confusion_matrices['val'][0][i,3]}", logger)
 
     return losses, metric_values, best_epoch, confusion_matrices
 
