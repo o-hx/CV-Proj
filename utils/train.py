@@ -268,9 +268,9 @@ def train_model(train_dataloader,
     log_print(f'Time Taken to train: {dt.datetime.now()-start_time}', logger)
 
     # Sum up confusion matrix along all batches
-    confusion_matrices['train'] = np.array(confusion_matrices['train']).mean(axis = 0)
+    confusion_matrices['train'] = confusion_matrices['train'][-1]
     for valid_idx in range(len(validation_dataloader_list)):
-        confusion_matrices['val'][valid_idx] = np.array(confusion_matrices['val'][valid_idx]).mean(axis = 0)
+        confusion_matrices['val'][valid_idx] = confusion_matrices['val'][valid_idx][-1]
     for i in range(len(classes)):
         log_print(f"Confusion Matrix of {classes[i]}, TN: {confusion_matrices['val'][0][i,0]}. FP: {confusion_matrices['val'][0][i,1]}, FN: {confusion_matrices['val'][0][i,2]}, TP: {confusion_matrices['val'][0][i,3]}", logger)
 
