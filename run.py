@@ -35,14 +35,18 @@ if __name__ == '__main__':
     test_image_filepath = os.path.join(cwd,'data','test_images')
     df_filepath = os.path.join(cwd,'data','train.csv')
     seed = 2
-    batch_size = 12
+    batch_size = 14
     img_size = (int(4*64), int(6*64))
     start_lr = 0.0005
-    classes = ['fish','gravel']
+    classes = ['fish']
     iou_threshold = 0.5
-    total_epochs = 10
-    grayscale = True
+    total_epochs = 2
+    grayscale = False
     drop_empty = True
+    loss_args = dict(
+        beta = 0.8,
+        gamma = 2.2
+    )
 
     mask_transform = torchvision.transforms.Compose([torchvision.transforms.Resize(img_size),
                                                     torchvision.transforms.ToTensor()
@@ -76,7 +80,7 @@ if __name__ == '__main__':
     # Define Model
     segmentation_model = smp.Unet('efficientnet-b2', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type='scse')
     # segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','dlv3_se_resnet50_current_model.pth'))
-    model_save_prefix = 'testing_' + get_module_name(segmentation_model) + '_' + get_module_name(segmentation_model.encoder) + '_'
+    model_save_prefix = ' '.join(classes) + get_module_name(segmentation_model) + '_' + get_module_name(segmentation_model.encoder) + '_'
 
     params = dict(
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
@@ -84,7 +88,7 @@ if __name__ == '__main__':
     )
 
     # Define Loss and Accuracy Metric
-    loss = smp.utils.losses.DiceLoss() + BinaryFocalLoss(gamma = 2.) #+ smp.utils.losses.BCELoss() #BinaryFocalLoss(gamma = 2.)
+    loss = smp.utils.losses.DiceLoss(beta = loss_args['beta']) + BinaryFocalLoss(gamma = loss_args['gamma']) #+ smp.utils.losses.BCELoss()
     metrics = [
         smp.utils.metrics.IoU(threshold=iou_threshold),
         smp.utils.metrics.Precision(threshold=iou_threshold)
@@ -128,6 +132,7 @@ if __name__ == '__main__':
         data_augmentation = str(data_augmentations.transforms.transforms).replace('\n','') + f' greyscale = {grayscale}',
         drop_empty = drop_empty,
         loss = loss.__name__,
+        loss_args = str(loss_args),
         start_lr = start_lr,
         optimizer = get_module_name(optimizer),
         scheduler = get_module_name(scheduler),
