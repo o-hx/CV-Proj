@@ -90,6 +90,7 @@ class Epoch:
                 loss, y_pred = self.batch_update(x, y)
                 # update loss logs
                 loss_value = loss.cpu().detach().numpy()
+                assert not np.isnan(loss_value), 'Loss cannot be NaN. Please restart'
                 loss_meter.add(loss_value)
                 loss_logs = {self.loss.__name__: loss_meter.mean}
                 logs.update(loss_logs)
@@ -292,7 +293,7 @@ def train_model(train_dataloader,
     
     if not os.path.exists(plots_save_path):
         os.makedirs(plots_save_path)
-    plt.savefig(os.path.join(plots_save_path,"nn_training_" + str(dt.datetime.now())[0:10].replace('-','_') + ".png"))
+    plt.savefig(os.path.join(plots_save_path,"nn_training_" + str(start_time).replace(':','').replace('  ',' ').replace(' ','_') + ".png"))
     log_print('Metric & Loss Plot Saved', logger)
     plt.close()
 
@@ -303,31 +304,31 @@ def train_model(train_dataloader,
         for clx_idx, classification in enumerate(['TN','FP','FN','TP']):
             if len(classes) > 1:
                 ax[class_idx,0].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['train']], color = colors[clx_idx], label=f"{classification}")
-                ax[class_idx,0].set_title(f'Training Confusion Matrix', fontsize=12)
+                ax[class_idx,0].set_title(f'Training Confusion Matrix {_class}', fontsize=12)
                 ax[class_idx,0].legend()
 
                 ax[class_idx,1].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['val'][0]], color = colors[clx_idx], label=f"{classification}")
-                ax[class_idx,1].set_title(f'Val 1 Confusion Matrix', fontsize=12)
+                ax[class_idx,1].set_title(f'Val 1 Confusion Matrix {_class}', fontsize=12)
                 ax[class_idx,1].legend()
 
                 ax[class_idx,2].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['val'][1]], color = colors[clx_idx], label=f"{classification}")
-                ax[class_idx,2].set_title(f'Val 2 Confusion Matrix', fontsize=12)
+                ax[class_idx,2].set_title(f'Val 2 Confusion Matrix {_class}', fontsize=12)
                 ax[class_idx,2].legend()
             else:
                 ax[0].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['train']], color = colors[clx_idx], label=f"{classification}")
-                ax[0].set_title(f'Training Confusion Matrix', fontsize=12)
+                ax[0].set_title(f'Training Confusion Matrix {_class}', fontsize=12)
                 ax[0].legend()
 
                 ax[1].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['val'][0]], color = colors[clx_idx], label=f"{classification}")
-                ax[1].set_title(f'Val 1 Confusion Matrix', fontsize=12)
+                ax[1].set_title(f'Val 1 Confusion Matrix {_class}', fontsize=12)
                 ax[1].legend()
 
                 ax[2].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['val'][1]], color = colors[clx_idx], label=f"{classification}")
-                ax[2].set_title(f'Val 2 Confusion Matrix', fontsize=12)
+                ax[2].set_title(f'Val 2 Confusion Matrix {_class}', fontsize=12)
                 ax[2].legend()
             
-    fig.suptitle(f'Confusion Matric Plot Across Epochs', fontsize=20)
-    plt.savefig(os.path.join(plots_save_path,"nn_training_cm_" + str(dt.datetime.now())[0:10].replace('-','_') + ".png"))
+    fig.suptitle(f'Confusion Matrix Plot Across Epochs', fontsize=20)
+    plt.savefig(os.path.join(plots_save_path,"nn_training_cm_" + str(start_time).replace(':','').replace('  ',' ').replace(' ','_') + ".png"))
     plt.close()
 
     # Sum up confusion matrix along all batches

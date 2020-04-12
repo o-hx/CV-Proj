@@ -48,8 +48,8 @@ class BinaryFocalLoss(Loss):
         y_pred = y_pred + self.eps
         logits = torch.log(y_pred/(1-y_pred))
 
-        assert alpha.shape[0] == y_pred.shape[1] # Number of classes must be same as number of class weights
-        assert len(alpha.shape) == 1 # Alpha must be a tensor of length 1
+        assert alpha.shape[0] == y_pred.shape[1], 'Number of classes must be same as number of class weights'
+        assert len(alpha.shape) == 1, 'Alpha must be a tensor of 1 dimension'
 
         return self.multiplier*binary_focal_loss_with_logits(
             logits, y_pred, y, alpha,
