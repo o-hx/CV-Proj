@@ -141,7 +141,7 @@ class classification_Dataset(data.Dataset):
         label = torch.FloatTensor(self.image_labels[ID.replace(self.train_image_filepath + '/', '')])
         if len(self.list_of_classes) == 1 and self.list_of_classes is not None:
             idx = ['fish', 'flower', 'gravel', 'sugar'].index(self.list_of_classes[0])
-            label = label[idx]
+            label = label[idx].unsqueeze(0)
         return X, label
 
 def prep_classification_data(train_image_filepath,
