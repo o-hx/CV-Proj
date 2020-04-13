@@ -7,7 +7,8 @@ import segmentation_models_pytorch as smp
 import torchvision
 
 from utils.data import prepare_dataloader
-from utils.train import validate_and_plot, log_print
+from utils.train import validate_and_plot
+from utils.misc import log_print
 
 if __name__ == '__main__':
     # Set up logging
@@ -47,7 +48,7 @@ if __name__ == '__main__':
     data_augmentations = None
 
     log_print('Preparing dataloaders', logging)
-    train_dataloader, validation_dataloader, valid_dl_no_empty, _ = prepare_dataloader(train_image_filepath = train_image_filepath,
+    train_dataload_er, validation_dataloader, valid_dl_no_empty, _ = prepare_dataloader(train_image_filepath = train_image_filepath,
                                                                                 test_image_filepath = test_image_filepath,
                                                                                 df_filepath = df_filepath,
                                                                                 seed = seed,
@@ -83,7 +84,7 @@ if __name__ == '__main__':
                                                                                 drop_empty = drop_empty
                                                                                 )
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','Unet_EfficientNetEncoder_best_model_DL.pth'), map_location = device)
+    segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','fishUnet_EfficientNetEncoder_current_model.pth'), map_location = device)
 
     metrics = [
         smp.utils.metrics.IoU(threshold=iou_threshold),

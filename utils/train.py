@@ -15,11 +15,7 @@ from tqdm import tqdm as tqdm
 from segmentation_models_pytorch.utils.meter import AverageValueMeter
 from collections import OrderedDict
 
-def log_print(text, logger, log_only = False):
-    if not log_only:
-        print(text)
-    if logger is not None:
-        logger.info(text)
+from utils.misc import log_print
 
 class Epoch:
     def __init__(self, model, loss, metrics, stage_name, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True):
@@ -60,9 +56,14 @@ class Epoch:
         y_pred = y_pred.cpu().detach().numpy()
         y_pred = np.where(y_pred > threshold, 1, 0)
 
-        bs, classes, height, width = y.shape
-        y = np.transpose(y, [1,0,2,3]).reshape(classes, -1)        
-        y_pred = np.transpose(y_pred, [1,0,2,3]).reshape(classes, -1)
+        if len(y_pred.shape) == 4:
+            bs, classes, height, width = y.shape
+            y = np.transpose(y, [1,0,2,3]).reshape(classes, -1)        
+            y_pred = np.transpose(y_pred, [1,0,2,3]).reshape(classes, -1)
+        else:
+            bs, classes = y.shape
+            y = y.reshape(classes, -1)
+            y_pred = y_pred.reshape(classes, -1)
 
         cm = []
         for clas in range(classes):
@@ -100,7 +101,12 @@ class Epoch:
 
                     if self.enable_class_wise_metrics:
                         for i in range(0,len(self.classes)):
-                            metric_value = metric_fn(y_pred[:,i,:,:], y[:,i,:,:]).cpu().detach().numpy()
+                            if len(y_pred.shape) == 4:
+                                metric_value = metric_fn(y_pred[:,i,:,:], y[:,i,:,:]).cpu().detach().numpy()
+                            elif len(y_pred.shape) == 2:
+                                metric_value = metric_fn(y_pred[:,i], y[:,i]).cpu().detach().numpy()
+                            else:
+                                raise NotImplementedError('Shape of y_pred must have length 2 or 4')
                             metrics_meters[f'{metric_fn.__name__}_{self.classes[i]}'].add(metric_value)
 
                 metrics_logs = {k: v.mean for k, v in metrics_meters.items() if 'overall' in k}
@@ -172,6 +178,71 @@ class ValidEpoch(Epoch):
             loss = self.loss(prediction, y)
             loss_value = loss.cpu().detach().numpy()
         return loss_value, prediction
+
+def plot_loss_metrics(validation_dataloader_list, losses, metrics, metric_values, metric_names, lr, num_epochs, batch_size, plots_save_path, start_time, logger = None):
+    # Implement plotting feature
+    # The code is only meant to work with the top 2 validation datasets, and no more
+    fig, ax = plt.subplots(1,(1+len(metrics)), figsize = (5*(1+len(metrics)),5))
+    fig.suptitle(f"Learning Rate: {lr:.5f}, Max Epochs: {num_epochs} Batch size: {batch_size}, Metric: {metrics[0].__name__}")
+
+    ax[0].set_title('Loss Value')
+    ax[0].plot(losses['train'], color = 'skyblue', label="Training Loss")
+    ax[0].plot(losses['val'][0], color = 'orange', label = "Validation Loss")
+    if len(validation_dataloader_list) > 1:
+        ax[0].plot(losses['val'][1], color = 'green', label = "Validation Loss 2")
+    ax[0].legend()
+
+    idx = 0
+    for _, metric_name in enumerate(metric_names):
+        if 'overall' in metric_name: # Only plot for the overall metric and not all metrics
+            ax[idx+1].set_title(metric_name)
+            ax[idx+1].plot(metric_values['train'][metric_name], color = 'skyblue', label=f"Training {metric_name}")
+            ax[idx+1].plot(metric_values['val'][0][metric_name], color = 'orange', label=f"Validation 1 {metric_name}")
+            if len(validation_dataloader_list) > 1:
+                ax[idx+1].plot(metric_values['val'][1][metric_name], color = 'green', label=f"Validation 2 {metric_name}")
+            ax[idx+1].legend()
+            idx += 1
+    
+    if not os.path.exists(plots_save_path):
+        os.makedirs(plots_save_path)
+    plt.savefig(os.path.join(plots_save_path,"nn_training_" + str(start_time).replace(':','').replace('  ',' ').replace(' ','_') + ".png"))
+    log_print('Metric & Loss Plot Saved', logger)
+    plt.close()
+
+def plot_cm(confusion_matrices, classes, validation_dataloader_list, start_time, plots_save_path, colors = ['black','orange','red','green'], logger = None):
+    # Plot another plot for the confusion matrices
+    fig, ax = plt.subplots(len(classes),len(validation_dataloader_list)+1, figsize=(10*(len(validation_dataloader_list)+1), 7*len(classes)))
+    for class_idx, _class in enumerate(classes):
+        for clx_idx, classification in enumerate(['TN','FP','FN','TP']):
+            if len(classes) > 1:
+                ax[class_idx,0].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['train']], color = colors[clx_idx], label=f"{classification}")
+                ax[class_idx,0].set_title(f'Training Confusion Matrix {_class}', fontsize=12)
+                ax[class_idx,0].legend()
+
+                ax[class_idx,1].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['val'][0]], color = colors[clx_idx], label=f"{classification}")
+                ax[class_idx,1].set_title(f'Val 1 Confusion Matrix {_class}', fontsize=12)
+                ax[class_idx,1].legend()
+                if len(validation_dataloader_list) > 1:
+                    ax[class_idx,2].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['val'][1]], color = colors[clx_idx], label=f"{classification}")
+                    ax[class_idx,2].set_title(f'Val 2 Confusion Matrix {_class}', fontsize=12)
+                    ax[class_idx,2].legend()
+            else:
+                ax[0].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['train']], color = colors[clx_idx], label=f"{classification}")
+                ax[0].set_title(f'Training Confusion Matrix {_class}', fontsize=12)
+                ax[0].legend()
+
+                ax[1].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['val'][0]], color = colors[clx_idx], label=f"{classification}")
+                ax[1].set_title(f'Val 1 Confusion Matrix {_class}', fontsize=12)
+                ax[1].legend()
+
+                if len(validation_dataloader_list) > 1:
+                    ax[2].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['val'][1]], color = colors[clx_idx], label=f"{classification}")
+                    ax[2].set_title(f'Val 2 Confusion Matrix {_class}', fontsize=12)
+                    ax[2].legend()
+            
+    fig.suptitle(f'Confusion Matrix Plot Across Epochs', fontsize=20)
+    plt.savefig(os.path.join(plots_save_path,"nn_training_cm_" + str(start_time).replace(':','').replace('  ',' ').replace(' ','_') + ".png"))
+    plt.close()
 
 def train_model(train_dataloader,
                 validation_dataloader_list,
@@ -269,68 +340,8 @@ def train_model(train_dataloader,
     log_print(f'Best epoch: {best_epoch} Best Performance Measure: {best_perfmeasure:.5f}', logger)
     log_print(f'Time Taken to train: {dt.datetime.now()-start_time}', logger)
 
-    # Implement plotting feature
-    # The code is only meant to work with the top 2 validation datasets, and no more
-    fig, ax = plt.subplots(1,(1+len(metrics)), figsize = (5*(1+len(metrics)),5))
-    fig.suptitle(f"Learning Rate: {optimizer.state_dict()['param_groups'][0]['lr']:.5f}, Max Epochs: {num_epochs} Batch size: {batch_size}, Metric: {metrics[0].__name__}")
-
-    ax[0].set_title('Loss Value')
-    ax[0].plot(losses['train'], color = 'skyblue', label="Training Loss")
-    ax[0].plot(losses['val'][0], color = 'orange', label = "Validation Loss")
-    if len(validation_dataloader_list) > 1:
-        ax[0].plot(losses['val'][1], color = 'green', label = "Validation Loss 2")
-    ax[0].legend()
-
-    idx = 0
-    for _, metric_name in enumerate(metric_names):
-        if 'overall' in metric_name: # Only plot for the overall metric and not all metrics
-            ax[idx+1].set_title(metric_name)
-            ax[idx+1].plot(metric_values['train'][metric_name], color = 'skyblue', label=f"Training {metric_name}")
-            ax[idx+1].plot(metric_values['val'][0][metric_name], color = 'orange', label=f"Validation 1 {metric_name}")
-            if len(validation_dataloader_list) > 1:
-                ax[idx+1].plot(metric_values['val'][1][metric_name], color = 'green', label=f"Validation 2 {metric_name}")
-            ax[idx+1].legend()
-            idx += 1
-    
-    if not os.path.exists(plots_save_path):
-        os.makedirs(plots_save_path)
-    plt.savefig(os.path.join(plots_save_path,"nn_training_" + str(start_time).replace(':','').replace('  ',' ').replace(' ','_') + ".png"))
-    log_print('Metric & Loss Plot Saved', logger)
-    plt.close()
-
-    # Plot another plot for the confusion matrices
-    fig, ax = plt.subplots(len(classes),len(validation_dataloader_list)+1, figsize=(10*(len(validation_dataloader_list)+1), 7*len(classes)))
-    colors = ['black','orange','red','green']
-    for class_idx, _class in enumerate(classes):
-        for clx_idx, classification in enumerate(['TN','FP','FN','TP']):
-            if len(classes) > 1:
-                ax[class_idx,0].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['train']], color = colors[clx_idx], label=f"{classification}")
-                ax[class_idx,0].set_title(f'Training Confusion Matrix {_class}', fontsize=12)
-                ax[class_idx,0].legend()
-
-                ax[class_idx,1].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['val'][0]], color = colors[clx_idx], label=f"{classification}")
-                ax[class_idx,1].set_title(f'Val 1 Confusion Matrix {_class}', fontsize=12)
-                ax[class_idx,1].legend()
-
-                ax[class_idx,2].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['val'][1]], color = colors[clx_idx], label=f"{classification}")
-                ax[class_idx,2].set_title(f'Val 2 Confusion Matrix {_class}', fontsize=12)
-                ax[class_idx,2].legend()
-            else:
-                ax[0].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['train']], color = colors[clx_idx], label=f"{classification}")
-                ax[0].set_title(f'Training Confusion Matrix {_class}', fontsize=12)
-                ax[0].legend()
-
-                ax[1].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['val'][0]], color = colors[clx_idx], label=f"{classification}")
-                ax[1].set_title(f'Val 1 Confusion Matrix {_class}', fontsize=12)
-                ax[1].legend()
-
-                ax[2].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['val'][1]], color = colors[clx_idx], label=f"{classification}")
-                ax[2].set_title(f'Val 2 Confusion Matrix {_class}', fontsize=12)
-                ax[2].legend()
-            
-    fig.suptitle(f'Confusion Matrix Plot Across Epochs', fontsize=20)
-    plt.savefig(os.path.join(plots_save_path,"nn_training_cm_" + str(start_time).replace(':','').replace('  ',' ').replace(' ','_') + ".png"))
-    plt.close()
+    plot_loss_metrics(validation_dataloader_list, losses, metrics, metric_values, metric_names, optimizer.state_dict()['param_groups'][0]['lr'], num_epochs, batch_size, plots_save_path, start_time, logger = logger)
+    plot_cm(confusion_matrices, classes, validation_dataloader_list, start_time, plots_save_path, logger = logger)
 
     # Sum up confusion matrix along all batches
     confusion_matrices['train'] = confusion_matrices['train'][-1]

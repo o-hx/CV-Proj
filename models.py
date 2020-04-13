@@ -1,6 +1,6 @@
 import torch
 
-from segmentation_models_pytorch.utils.base import Loss
+from segmentation_models_pytorch.utils.base import Loss, Metric
 from segmentation_models_pytorch.utils.functional import _take_channels, _threshold
 
 # Function for loss
@@ -32,6 +32,22 @@ def binary_focal_loss_with_logits(logits, y_pred, y, alpha, gamma = 0., threshol
     else:
         raise NotImplementedError(f'{reduction} not yet implemented')
 
+def accuracy(pr, gt, threshold=0.5, ignore_channels=None):
+    """Calculate accuracy score between ground truth and prediction
+    Args:
+        pr (torch.Tensor): predicted tensor
+        gt (torch.Tensor):  ground truth tensor
+        eps (float): epsilon to avoid zero division
+        threshold: threshold for outputs binarization
+    Returns:
+        float: precision score
+    """
+    pr = _threshold(pr, threshold=threshold)
+    pr, gt = _take_channels(pr, gt, ignore_channels=ignore_channels)
+    tp = torch.sum(gt == pr)
+    score = tp / float(gt.view(-1).shape[0])
+    return score
+
 # Loss
 class BinaryFocalLoss(Loss):
     def __init__(self, gamma = 2., alpha = None, reduction = 'mean', eps = 1e-7, ignore_channels = None, multiplier = 1., **kwargs):
@@ -57,4 +73,19 @@ class BinaryFocalLoss(Loss):
             threshold=None,
             ignore_channels=self.ignore_channels,
             reduction=self.reduction
+        )
+
+# Define accuracy metric
+# It's largely the same except we need to add a float measure
+class Accuracy(Metric):
+    def __init__(self, threshold=0.5, ignore_channels=None, **kwargs):
+        super().__init__(**kwargs)
+        self.threshold = threshold
+        self.ignore_channels = ignore_channels
+
+    def forward(self, y_pr, y_gt):
+        return accuracy(
+            y_pr, y_gt,
+            threshold=self.threshold,
+            ignore_channels=self.ignore_channels,
         )

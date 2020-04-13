@@ -138,18 +138,18 @@ class classification_Dataset(data.Dataset):
         if self.transforms is not None:
             X = Image.fromarray(X)
             X = self.transforms(X)
-        label = torch.FloatTensor(self.image_labels[ID.replace(train_image_filepath + '/', '')])        
+        label = torch.FloatTensor(self.image_labels[ID.replace(self.train_image_filepath + '/', '')])        
         return X, label
 
 def prep_classification_data(train_image_filepath,
                              df_filepath, 
-                             seed, 
-                             train_proportion, 
+                             seed,
                              size, 
                              transforms,
                              data_augmentation,
-                             equalise, 
-                             batch_size):
+                             batch_size,
+                             equalise = True,
+                             train_proportion = 0.9):
 
     # Get dictionary of {image: labels}
     train_dict, valid_dict, test_dict, classes = split_data(df_filepath, seed, train_proportion = train_proportion)
@@ -166,9 +166,9 @@ def prep_classification_data(train_image_filepath,
     test_ds = classification_Dataset(train_image_filepath, test_fp, test_dict, size = size, transforms = transforms, data_augmentation = None, equalise = equalise, list_of_classes = classes)
     
     # Initialise dataloader
-    train_dl = data.DataLoader(train_ds, batch_size = batch_size)#, num_workers=batch_size)
-    valid_dl = data.DataLoader(valid_ds, batch_size = batch_size)#, num_workers=batch_size)
-    test_dl = data.DataLoader(test_ds, batch_size = batch_size)#, num_workers=batch_size)
+    train_dl = data.DataLoader(train_ds, batch_size = batch_size, num_workers=12)#, num_workers=batch_size)
+    valid_dl = data.DataLoader(valid_ds, batch_size = batch_size, num_workers=8)#, num_workers=batch_size)
+    test_dl = data.DataLoader(test_ds, batch_size = batch_size, num_workers=8)#, num_workers=batch_size)
 
     return train_dl, valid_dl, test_dl
 

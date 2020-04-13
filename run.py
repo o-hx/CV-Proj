@@ -8,15 +8,9 @@ import torchvision
 import re
 
 from utils.data import prepare_dataloader, get_augmentations
-from utils.train import train_model, log_print
-from utils.sheets_upload import upload_google_sheets
+from utils.train import train_model
+from utils.misc import upload_google_sheets, get_module_name, log_print
 from models import BinaryFocalLoss
-
-def get_module_name(obj):
-    try:
-        return re.findall(r"[A-Za-z0-9]+'",str(type(obj)))[0].replace("'",'')
-    except:
-        return "Name not found"
 
 if __name__ == '__main__':
     # Set up logging
@@ -38,13 +32,13 @@ if __name__ == '__main__':
     batch_size = 16
     img_size = (int(4*64), int(6*64))
     start_lr = 0.0005
-    classes = ['fish']
+    classes = ['sugar','flower','fish','gravel']
     iou_threshold = 0.5
     total_epochs = 10
     grayscale = False
     drop_empty = True
     loss_args = dict(
-        beta = 1.,
+        beta = 0.7,
         gamma = 2.
     )
 
@@ -78,8 +72,8 @@ if __name__ == '__main__':
                                                                                 )
 
     # Define Model
-    segmentation_model = smp.Unet('efficientnet-b2', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type='scse')
-    # segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','dlv3_se_resnet50_current_model.pth'))
+    segmentation_model = smp.Unet('efficientnet-b0', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type='scse')
+    #segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','densenet169_best_model.pth'))
     model_save_prefix = ' '.join(classes) + get_module_name(segmentation_model) + '_' + get_module_name(segmentation_model.encoder) + '_'
 
     params = dict(
@@ -88,7 +82,7 @@ if __name__ == '__main__':
     )
 
     # Define Loss and Accuracy Metric
-    loss = smp.utils.losses.DiceLoss(beta = loss_args['beta']) + BinaryFocalLoss(gamma = loss_args['gamma']) #+ smp.utils.losses.BCELoss()
+    loss = smp.utils.losses.DiceLoss(beta = loss_args['beta']) + BinaryFocalLoss(gamma = loss_args['gamma']) # + smp.utils.losses.BCELoss() #
     metrics = [
         smp.utils.metrics.IoU(threshold=iou_threshold),
         smp.utils.metrics.Precision(threshold=iou_threshold)
