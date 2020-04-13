@@ -115,7 +115,7 @@ def split_data(df_filepath, seed, train_proportion = 0.9):
     return train_dict, valid_dict, test_dict, classes
 
 class classification_Dataset(data.Dataset):
-    def __init__(self, train_image_filepath, image_filepath, image_labels, size, transforms = None, data_augmentation = None, equalise = True, list_of_classes = ['fish', 'flower', 'gravel', 'sugar']):
+    def __init__(self, train_image_filepath, image_filepath, image_labels, size, transforms = None, data_augmentation = None, equalise = True, list_of_classes = None):
         self.train_image_filepath = train_image_filepath
         self.image_filepath = image_filepath
         self.image_labels = image_labels
@@ -138,7 +138,11 @@ class classification_Dataset(data.Dataset):
         if self.transforms is not None:
             X = Image.fromarray(X)
             X = self.transforms(X)
-        label = torch.FloatTensor(self.image_labels[ID.replace(self.train_image_filepath + '/', '')])        
+        label = torch.FloatTensor(self.image_labels[ID.replace(self.train_image_filepath + '/', '')])
+        print(self.list_of_classes)
+        if len(self.list_of_classes) == 1 and self.list_of_classes is not None:
+            idx = ['fish', 'flower', 'gravel', 'sugar'].index(self.list_of_classes[0])
+            label = label[idx]
         return X, label
 
 def prep_classification_data(train_image_filepath,
@@ -149,7 +153,8 @@ def prep_classification_data(train_image_filepath,
                              data_augmentation,
                              batch_size,
                              equalise = True,
-                             train_proportion = 0.9):
+                             train_proportion = 0.9, 
+                             list_of_classes = None):
 
     # Get dictionary of {image: labels}
     train_dict, valid_dict, test_dict, classes = split_data(df_filepath, seed, train_proportion = train_proportion)
@@ -161,14 +166,14 @@ def prep_classification_data(train_image_filepath,
 
 
     # Initialise classification dataset class 
-    train_ds = classification_Dataset(train_image_filepath, train_fp, train_dict, size = size, transforms = transforms, data_augmentation = data_augmentation, equalise = equalise, list_of_classes = classes)
-    valid_ds = classification_Dataset(train_image_filepath, valid_fp, valid_dict, size = size, transforms = transforms, data_augmentation = None, equalise = equalise, list_of_classes = classes)
-    test_ds = classification_Dataset(train_image_filepath, test_fp, test_dict, size = size, transforms = transforms, data_augmentation = None, equalise = equalise, list_of_classes = classes)
+    train_ds = classification_Dataset(train_image_filepath, train_fp, train_dict, size = size, transforms = transforms, data_augmentation = data_augmentation, equalise = equalise, list_of_classes = list_of_classes)
+    valid_ds = classification_Dataset(train_image_filepath, valid_fp, valid_dict, size = size, transforms = transforms, data_augmentation = None, equalise = equalise, list_of_classes = list_of_classes)
+    test_ds = classification_Dataset(train_image_filepath, test_fp, test_dict, size = size, transforms = transforms, data_augmentation = None, equalise = equalise, list_of_classes = list_of_classes)
     
     # Initialise dataloader
-    train_dl = data.DataLoader(train_ds, batch_size = batch_size, num_workers=12)#, num_workers=batch_size)
-    valid_dl = data.DataLoader(valid_ds, batch_size = batch_size, num_workers=8)#, num_workers=batch_size)
-    test_dl = data.DataLoader(test_ds, batch_size = batch_size, num_workers=8)#, num_workers=batch_size)
+    train_dl = data.DataLoader(train_ds, batch_size = batch_size, num_workers=batch_size)
+    valid_dl = data.DataLoader(valid_ds, batch_size = batch_size, num_workers=batch_size)
+    test_dl = data.DataLoader(test_ds, batch_size = batch_size, num_workers=batch_size)
 
     return train_dl, valid_dl, test_dl
 
@@ -181,7 +186,8 @@ if __name__ == "__main__":
     img_size = (6*64, 9*64)
     train_proportion = 0.9
     equalise = True
-    batch_size = 16
+    batch_size = 2
+    dl_class = ['fish'] # This should be a single class, or None if want to include all
     data_augmentation = get_augmentations(img_size)
     transforms = torchvision.transforms.Compose([torchvision.transforms.Resize((6*64, 9*64)),
                                                 torchvision.transforms.ToTensor(),
@@ -195,7 +201,8 @@ if __name__ == "__main__":
                                                            transforms = transforms,
                                                            data_augmentation = data_augmentation,
                                                            equalise = equalise, 
-                                                           batch_size = batch_size)
+                                                           batch_size = batch_size, 
+                                                           list_of_classes = dl_class)
 
     for idx, X in enumerate(train_dl):
         x, label = X
@@ -207,5 +214,3 @@ if __name__ == "__main__":
         plt.imshow(img)
         plt.show()
         break
-
-
