@@ -153,7 +153,7 @@ def prep_classification_data(train_image_filepath,
                              batch_size,
                              equalise = True,
                              train_proportion = 0.9, 
-                             list_of_classes = None):
+                             list_of_classes = ['sugar','flower','fish','gravel']):
 
     # Get dictionary of {image: labels}
     train_dict, valid_dict, test_dict, classes = split_data(df_filepath, seed, train_proportion = train_proportion)
