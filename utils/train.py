@@ -20,6 +20,7 @@ def log_print(text, logger, log_only = False):
         print(text)
     if logger is not None:
         logger.info(text)
+
 class Epoch:
     def __init__(self, model, loss, metrics, stage_name, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True):
         self.model = model
@@ -81,14 +82,13 @@ class Epoch:
             metric_meter_classes = ['overall']
 
         metrics_meters = {f'{metric.__name__}_{_class}': AverageValueMeter() for metric in self.metrics for _class in metric_meter_classes}
-
+        confusion_matrices_epoch = []
         with tqdm(dataloader, desc=self.stage_name, file=sys.stdout, disable=not (self.verbose)) as iterator:
             # Run for 1 epoch
             for x, y in iterator:
                 x, y = x.to(self.device), y.to(self.device)
-                loss, y_pred = self.batch_update(x, y)
+                loss_value, y_pred = self.batch_update(x, y)
                 # update loss logs
-                loss_value = loss.cpu().detach().numpy()
                 loss_meter.add(loss_value)
                 loss_logs = {self.loss.__name__: loss_meter.mean}
                 logs.update(loss_logs)
@@ -111,14 +111,15 @@ class Epoch:
                     iterator.set_postfix_str(s)
 
                 # compute confusion matrix
-                confusion_matrix = self.get_confusion_matrix(y_pred, y)
+                confusion_matrices_epoch.append(self.get_confusion_matrix(y_pred, y))
 
+        confusion_matrices_epoch = np.array(confusion_matrices_epoch).sum(axis = 0)
         cumulative_logs = {k: v.sum/v.n for k, v in metrics_meters.items()}
         cumulative_logs['loss'] = loss_meter.sum/loss_meter.n
         log_print(" ".join([f"{k}:{v:.4f}" for k, v in cumulative_logs.items()]), self.logger)
         for i in range(len(self.classes)):
-            log_print(f"Confusion Matrix of {self.classes[i]}, TN: {confusion_matrix[i,0]}. FP: {confusion_matrix[i,1]}, FN: {confusion_matrix[i,2]}, TP: {confusion_matrix[i,3]}", self.logger)
-        return cumulative_logs, confusion_matrix
+            log_print(f"Confusion Matrix of {self.classes[i]}, TN: {confusion_matrices_epoch[i,0]}. FP: {confusion_matrices_epoch[i,1]}, FN: {confusion_matrices_epoch[i,2]}, TP: {confusion_matrices_epoch[i,3]}", self.logger)
+        return cumulative_logs, confusion_matrices_epoch
 
 class TrainEpoch(Epoch):
     def __init__(self, model, loss, metrics, optimizer, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True):
@@ -144,7 +145,9 @@ class TrainEpoch(Epoch):
         loss = self.loss(prediction, y)
         loss.backward()
         self.optimizer.step()
-        return loss, prediction
+        loss_value = loss.cpu().detach().numpy()
+        assert not np.isnan(loss_value), 'Loss cannot be NaN. Please restart'
+        return loss_value, prediction
 
 class ValidEpoch(Epoch):
     def __init__(self, model, loss, metrics, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True):
@@ -167,7 +170,8 @@ class ValidEpoch(Epoch):
         with torch.no_grad():
             prediction = self.model.forward(x)
             loss = self.loss(prediction, y)
-        return loss, prediction
+            loss_value = loss.cpu().detach().numpy()
+        return loss_value, prediction
 
 def train_model(train_dataloader,
                 validation_dataloader_list,
@@ -264,12 +268,6 @@ def train_model(train_dataloader,
 
     log_print(f'Best epoch: {best_epoch} Best Performance Measure: {best_perfmeasure:.5f}', logger)
     log_print(f'Time Taken to train: {dt.datetime.now()-start_time}', logger)
-    # Print the confusion matrix final score
-    # You need to sum up the confusion matrices along one axis first
-    # Print for train, val and val_no_empty
-    #log_print(f"TP: {confusion_matrix[0,0]}. FP: {confusion_matrix[0,1]}, FN: {confusion_matrix[1,0]}, TN: {confusion_matrix[1,1]}", self.logger)
-
-    # Once done save the summed confusion matrices back into the confusion_matrices dictionary
 
     # Implement plotting feature
     # The code is only meant to work with the top 2 validation datasets, and no more
@@ -279,7 +277,8 @@ def train_model(train_dataloader,
     ax[0].set_title('Loss Value')
     ax[0].plot(losses['train'], color = 'skyblue', label="Training Loss")
     ax[0].plot(losses['val'][0], color = 'orange', label = "Validation Loss")
-    ax[0].plot(losses['val'][1], color = 'green', label = "Validation Loss 2")
+    if len(validation_dataloader_list) > 1:
+        ax[0].plot(losses['val'][1], color = 'green', label = "Validation Loss 2")
     ax[0].legend()
 
     idx = 0
@@ -288,16 +287,59 @@ def train_model(train_dataloader,
             ax[idx+1].set_title(metric_name)
             ax[idx+1].plot(metric_values['train'][metric_name], color = 'skyblue', label=f"Training {metric_name}")
             ax[idx+1].plot(metric_values['val'][0][metric_name], color = 'orange', label=f"Validation 1 {metric_name}")
-            ax[idx+1].plot(metric_values['val'][1][metric_name], color = 'green', label=f"Validation 2 {metric_name}")
+            if len(validation_dataloader_list) > 1:
+                ax[idx+1].plot(metric_values['val'][1][metric_name], color = 'green', label=f"Validation 2 {metric_name}")
             ax[idx+1].legend()
             idx += 1
     
     if not os.path.exists(plots_save_path):
         os.makedirs(plots_save_path)
-    plt.savefig(os.path.join(plots_save_path,"nn_training_" + str(time.ctime()).replace(':','').replace('  ',' ').replace(' ','_') + ".png"))
-    log_print('Plot Saved', logger)
+    plt.savefig(os.path.join(plots_save_path,"nn_training_" + str(start_time).replace(':','').replace('  ',' ').replace(' ','_') + ".png"))
+    log_print('Metric & Loss Plot Saved', logger)
+    plt.close()
 
-    return losses, metric_values, best_epoch#, confusion_matrices
+    # Plot another plot for the confusion matrices
+    fig, ax = plt.subplots(len(classes),len(validation_dataloader_list)+1, figsize=(10*(len(validation_dataloader_list)+1), 7*len(classes)))
+    colors = ['black','orange','red','green']
+    for class_idx, _class in enumerate(classes):
+        for clx_idx, classification in enumerate(['TN','FP','FN','TP']):
+            if len(classes) > 1:
+                ax[class_idx,0].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['train']], color = colors[clx_idx], label=f"{classification}")
+                ax[class_idx,0].set_title(f'Training Confusion Matrix {_class}', fontsize=12)
+                ax[class_idx,0].legend()
+
+                ax[class_idx,1].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['val'][0]], color = colors[clx_idx], label=f"{classification}")
+                ax[class_idx,1].set_title(f'Val 1 Confusion Matrix {_class}', fontsize=12)
+                ax[class_idx,1].legend()
+
+                ax[class_idx,2].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['val'][1]], color = colors[clx_idx], label=f"{classification}")
+                ax[class_idx,2].set_title(f'Val 2 Confusion Matrix {_class}', fontsize=12)
+                ax[class_idx,2].legend()
+            else:
+                ax[0].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['train']], color = colors[clx_idx], label=f"{classification}")
+                ax[0].set_title(f'Training Confusion Matrix {_class}', fontsize=12)
+                ax[0].legend()
+
+                ax[1].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['val'][0]], color = colors[clx_idx], label=f"{classification}")
+                ax[1].set_title(f'Val 1 Confusion Matrix {_class}', fontsize=12)
+                ax[1].legend()
+
+                ax[2].plot([cm[class_idx,clx_idx] for cm in confusion_matrices['val'][1]], color = colors[clx_idx], label=f"{classification}")
+                ax[2].set_title(f'Val 2 Confusion Matrix {_class}', fontsize=12)
+                ax[2].legend()
+            
+    fig.suptitle(f'Confusion Matrix Plot Across Epochs', fontsize=20)
+    plt.savefig(os.path.join(plots_save_path,"nn_training_cm_" + str(start_time).replace(':','').replace('  ',' ').replace(' ','_') + ".png"))
+    plt.close()
+
+    # Sum up confusion matrix along all batches
+    confusion_matrices['train'] = confusion_matrices['train'][-1]
+    for valid_idx in range(len(validation_dataloader_list)):
+        confusion_matrices['val'][valid_idx] = confusion_matrices['val'][valid_idx][-1]
+    for i in range(len(classes)):
+        log_print(f"Confusion Matrix of {classes[i]}, TN: {confusion_matrices['val'][0][i,0]}. FP: {confusion_matrices['val'][0][i,1]}, FN: {confusion_matrices['val'][0][i,2]}, TP: {confusion_matrices['val'][0][i,3]}", logger)
+
+    return losses, metric_values, best_epoch, confusion_matrices
 
 def test_model(test_dataloader,
                 model,

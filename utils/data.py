@@ -231,8 +231,8 @@ def prepare_dataloader(train_image_filepath,
         valid_ds_no_empty = None
     test_ds = Dataset(test_images, EncodedPixels = None, transforms = test_transform,  size = size, test = True, label = label, grayscale = grayscale, equalise = equalise)
 
-    train_dl = data.DataLoader(train_ds, batch_size = batch_size, shuffle = shuffle_train_dataloader, num_workers=12)
-    valid_dl = data.DataLoader(valid_ds, batch_size = batch_size, shuffle = shuffle_val_dataloader, num_workers=8)
+    train_dl = data.DataLoader(train_ds, batch_size = batch_size, shuffle = shuffle_train_dataloader, num_workers=15)
+    valid_dl = data.DataLoader(valid_ds, batch_size = batch_size, shuffle = shuffle_val_dataloader, num_workers=10)
     if len(label) < 4 and drop_empty:
         valid_dl_no_empty = data.DataLoader(valid_ds_no_empty, batch_size = batch_size, shuffle = shuffle_val_dataloader)
     else:
