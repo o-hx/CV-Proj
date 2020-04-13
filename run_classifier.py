@@ -5,7 +5,6 @@ import os
 import time
 import segmentation_models_pytorch as smp
 import torchvision
-import re
 
 from utils.data_classifier import prep_classification_data, get_augmentations
 from utils.train import train_model
@@ -34,7 +33,7 @@ if __name__ == '__main__':
     start_lr = 0.001
     classes = ['sugar','flower','fish','gravel']
     threshold = 0.5
-    total_epochs = 2
+    total_epochs = 10
     loss_args = dict(
         gamma = 2.
     )
@@ -98,34 +97,32 @@ if __name__ == '__main__':
     log_print(f'Completed training and validation', logging)
     
     # Prepare dictionary to update to Google Sheets
-    # result = dict(
-    #     model_name = get_module_name(classification_model),
-    #     encoder = get_module_name(segmentation_model.encoder),
-    #     image_size = str(img_size),
-    #     batch_size = batch_size,
-    #     classes = str(classes),
-    #     data_augmentation = str(data_augmentations.transforms.transforms).replace('\n','') + f' greyscale = {grayscale}',
-    #     drop_empty = drop_empty,
-    #     loss = loss.__name__,
-    #     loss_args = str(loss_args),
-    #     start_lr = start_lr,
-    #     optimizer = get_module_name(optimizer),
-    #     scheduler = get_module_name(scheduler),
-    #     iou_threshold = iou_threshold,
-    #     total_epochs = total_epochs,
-    #     training_loss = losses['train'][-1],
-    #     validation_loss = losses['val'][0][-1],
-    #     train_iou_overall = metric_values['train']['iou_score_overall'][-1],
-    #     val_iou_overall = metric_values['val'][0]['iou_score_overall'][-1],
-    #     train_iou_overall_best = metric_values['train']['iou_score_overall'][best_epoch],
-    #     val_iou_overall_best = metric_values['val'][0]['iou_score_overall'][best_epoch],
-    #     train_cm = str(confusion_matrices['train']),
-    #     val_cm = str(confusion_matrices['val'][0]),
-    # )
+    result = dict(
+        model_name = get_module_name(classification_model),
+        image_size = str(img_size),
+        batch_size = batch_size,
+        classes = str(classes),
+        data_augmentation = str(data_augmentation.transforms.transforms).replace('\n',''),
+        loss = loss.__name__,
+        loss_args = str(loss_args),
+        start_lr = start_lr,
+        optimizer = get_module_name(optimizer),
+        scheduler = get_module_name(scheduler),
+        acc_threshold = threshold,
+        total_epochs = total_epochs,
+        training_loss = losses['train'][-1],
+        validation_loss = losses['val'][0][-1],
+        train_acc_overall = metric_values['train']['accuracy_overall'][-1],
+        val_acc_overall = metric_values['val'][0]['accuracy_overall'][-1],
+        train_acc_overall_best = metric_values['train']['accuracy_overall'][best_epoch],
+        val_acc_overall_best = metric_values['val'][0]['accuracy_overall'][best_epoch],
+        train_cm = str(confusion_matrices['train']),
+        val_cm = str(confusion_matrices['val'][0]),
+    )
 
-    # for _class in classes:
-    #     result[f'train_iou_score_{_class}'] = metric_values['train'][f'iou_score_{_class}'][-1]
-    #     result[f'val_iou_score_{_class}'] = metric_values['val'][0][f'iou_score_{_class}'][-1]
-    #     result[f'val_iou_score_{_class}_best'] = metric_values['val'][0][f'iou_score_{_class}'][best_epoch]
+    for _class in classes:
+        result[f'train_acc_{_class}'] = metric_values['train'][f'accuracy_{_class}'][-1]
+        result[f'val_acc_{_class}'] = metric_values['val'][0][f'accuracy_{_class}'][-1]
+        result[f'val_acc_{_class}_best'] = metric_values['val'][0][f'accuracy_{_class}'][best_epoch]
     
-    # upload_google_sheets(result, logger = logging)
+    upload_google_sheets(result, sheet_name = 'Classifier', logger = logging)

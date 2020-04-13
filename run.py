@@ -5,7 +5,6 @@ import os
 import time
 import segmentation_models_pytorch as smp
 import torchvision
-import re
 
 from utils.data import prepare_dataloader, get_augmentations
 from utils.train import train_model

@@ -48,7 +48,15 @@ class Epoch:
     def on_epoch_start(self):
         pass
 
-    def get_confusion_matrix(self, y_pred, y, threshold = 0.5):
+    @staticmethod
+    def get_confusion_matrix(y_pred, y, threshold = 0.5):
+        def _cm(y_pred, y):
+            TP = np.logical_and(y_pred == 1, y == 1).sum()
+            TN = np.logical_and(y_pred == 0, y == 0).sum()
+            FP = np.logical_and(y_pred == 1, y == 0).sum()
+            FN = np.logical_and(y_pred == 0, y == 1).sum()
+            return TN, FP, FN, TP
+
         # Shape of y and y_pred = (bs, class, height, width)
         # Takes in y and y_pred and returns a class * [tn, fp, fn, tp]  array
         # Remember to threshold the values of y_pred first which are probabilities
@@ -61,13 +69,13 @@ class Epoch:
             y = np.transpose(y, [1,0,2,3]).reshape(classes, -1)        
             y_pred = np.transpose(y_pred, [1,0,2,3]).reshape(classes, -1)
         else:
-            bs, classes = y.shape
-            y = y.reshape(classes, -1)
-            y_pred = y_pred.reshape(classes, -1)
+            _, classes = y.shape
+            y = y.transpose()
+            y_pred = y_pred.transpose()
 
         cm = []
         for clas in range(classes):
-            tn, fp, fn, tp = confusion_matrix(y[clas, :], y_pred[clas, :]).ravel()
+            tn, fp, fn, tp = _cm(y[clas,:], y_pred[clas,:])
             cm.append([tn, fp, fn, tp])
         return np.array(cm)
 
