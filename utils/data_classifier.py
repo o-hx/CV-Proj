@@ -139,9 +139,12 @@ class classification_Dataset(data.Dataset):
             X = Image.fromarray(X)
             X = self.transforms(X)
         label = torch.FloatTensor(self.image_labels[ID.replace(self.train_image_filepath + '/', '')])
-        if len(self.list_of_classes) == 1 and self.list_of_classes is not None:
-            idx = ['fish', 'flower', 'gravel', 'sugar'].index(self.list_of_classes[0])
-            label = label[idx].unsqueeze(0)
+        if self.list_of_classes is not None:
+            labels = []
+            for clas in self.list_of_classes:
+                idx = ['fish', 'flower', 'gravel', 'sugar'].index(clas)
+                labels.append(label[idx])
+            label = torch.stack(labels)
         return X, label
 
 def prep_classification_data(train_image_filepath,
@@ -186,7 +189,7 @@ if __name__ == "__main__":
     train_proportion = 0.9
     equalise = True
     batch_size = 2
-    dl_class = ['fish'] # This should be a single class, or None if want to include all
+    dl_class = ['fish', 'sugar'] # This should be a single class, or None if want to include all
     data_augmentation = get_augmentations(img_size)
     transforms = torchvision.transforms.Compose([torchvision.transforms.Resize((6*64, 9*64)),
                                                 torchvision.transforms.ToTensor(),
