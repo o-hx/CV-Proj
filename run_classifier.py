@@ -29,33 +29,34 @@ if __name__ == '__main__':
     df_filepath = os.path.join(cwd,'data','train.csv')
     seed = 2
     batch_size = 8
-    img_size = (int(4*64), int(6*64))
+    img_size = (int(6*64), int(9*64))
     start_lr = 0.001
-    classes = ['sugar','flower','fish','gravel']
+    classes = ['flower','fish']
     threshold = 0.5
-    total_epochs = 10
+    total_epochs = 20
     loss_args = dict(
         gamma = 2.
     )
 
     data_augmentation = get_augmentations(img_size)
 
-    transforms = torchvision.transforms.Compose([torchvision.transforms.Resize((6*64, 9*64)),
+    transforms = torchvision.transforms.Compose([torchvision.transforms.Resize(img_size),
                                                 torchvision.transforms.ToTensor(),
                                                 torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
     train_dl, valid_dl, test_dl = prep_classification_data(train_image_filepath = train_image_filepath,
                                                            df_filepath = df_filepath, 
                                                            seed = seed,
-                                                           size = img_size, 
+                                                           size = img_size,
+                                                           list_of_classes = classes,
                                                            transforms = transforms,
                                                            data_augmentation = data_augmentation,
                                                            batch_size = batch_size)
 
     # Define Model
     classification_model = torchvision.models.densenet169(pretrained=True)
-    classification_model.classifier = torch.nn.Sequential(torch.nn.Linear(in_features = 1664, out_features = 4, bias = True), torch.nn.Sigmoid())
-    model_save_prefix = 'classifier_' + get_module_name(classification_model)
+    classification_model.classifier = torch.nn.Sequential(torch.nn.Linear(in_features = 1664, out_features = len(classes), bias = True), torch.nn.Sigmoid())
+    model_save_prefix = '_'.join(classes) + 'classifier_' + get_module_name(classification_model)
 
     params = dict(
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
