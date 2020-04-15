@@ -44,14 +44,14 @@ if __name__ == '__main__':
                                                 torchvision.transforms.ToTensor(),
                                                 torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
-    train_dl, valid_dl, test_dl = prep_classification_data(train_image_filepath = train_image_filepath,
-                                                           df_filepath = df_filepath, 
-                                                           seed = seed,
-                                                           size = img_size,
-                                                           list_of_classes = classes,
-                                                           transforms = transforms,
-                                                           data_augmentation = data_augmentation,
-                                                           batch_size = batch_size)
+    train_dl, valid_dl, test_dl, num_samples_class = prep_classification_data(train_image_filepath = train_image_filepath,
+                                                                              df_filepath = df_filepath, 
+                                                                              seed = seed,
+                                                                              size = img_size,
+                                                                              list_of_classes = classes,
+                                                                              transforms = transforms,
+                                                                              data_augmentation = data_augmentation,
+                                                                              batch_size = batch_size)
 
     # Define Model
     classification_model = torchvision.models.densenet169(pretrained=True)

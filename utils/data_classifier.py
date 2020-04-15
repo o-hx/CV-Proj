@@ -161,11 +161,17 @@ def prep_classification_data(train_image_filepath,
     # Get dictionary of {image: labels}
     train_dict, valid_dict, test_dict, classes = split_data(df_filepath, seed, train_proportion = train_proportion)
 
+    num_samples = np.sum(np.array(list(train_dict.values())), axis = 0)
+    num_samples_class = []
+    for clas in list_of_classes:
+        idx = ['fish', 'flower', 'gravel', 'sugar'].index(clas)
+        num_samples_class.append(num_samples[idx])
+    num_samples_class = torch.from_numpy(np.array(num_samples_class)/np.sum(np.array(num_samples_class)))        
+    
     # Create list of image filepaths
     train_fp = [train_image_filepath + '/' + img for img in train_dict.keys()]
     valid_fp = [train_image_filepath + '/' + img for img in valid_dict.keys()]
     test_fp = [train_image_filepath + '/' + img for img in test_dict.keys()]
-
 
     # Initialise classification dataset class 
     train_ds = classification_Dataset(train_image_filepath, train_fp, train_dict, size = size, transforms = transforms, data_augmentation = data_augmentation, equalise = equalise, list_of_classes = list_of_classes)
@@ -177,7 +183,7 @@ def prep_classification_data(train_image_filepath,
     valid_dl = data.DataLoader(valid_ds, batch_size = batch_size, num_workers=batch_size)
     test_dl = data.DataLoader(test_ds, batch_size = batch_size, num_workers=batch_size)
 
-    return train_dl, valid_dl, test_dl
+    return train_dl, valid_dl, test_dl, num_samples_class
 
 if __name__ == "__main__":
 
@@ -195,7 +201,7 @@ if __name__ == "__main__":
                                                 torchvision.transforms.ToTensor(),
                                                 torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
-    train_dl, valid_dl, test_dl = prep_classification_data(train_image_filepath = train_image_filepath,
+    train_dl, valid_dl, test_dl, num_samples_class = prep_classification_data(train_image_filepath = train_image_filepath,
                                                            df_filepath = df_filepath, 
                                                            seed = seed, 
                                                            train_proportion = train_proportion, 
