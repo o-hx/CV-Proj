@@ -322,7 +322,7 @@ def plot_roc_iou(dataloader_list,
             best_iou_index = class_iou_scores.index(max(class_iou_scores))
             optimal_threshold = threshold_intervals[best_iou_index]
             ax.set_xticks(np.arange(0, 1.05, 0.1))
-            ax.plot(threshold_intervals, class_iou_scores, label=f'{clas}, best_thresh = {optimal_threshold:.3f}')
+            ax.plot(threshold_intervals, class_iou_scores, label=f'{clas}, best_thresh = {optimal_threshold:.1f}')
         ax.legend()
         ax.set_title(f'IOU Plot for {dl_name}', fontsize=12)
 
