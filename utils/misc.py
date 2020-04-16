@@ -1,6 +1,7 @@
 import os
 import pickle
 import re
+import numpy as np
 
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -63,3 +64,16 @@ def upload_google_sheets(upload_dict, spreadsheet_id = '1nliojVYnyy-42Sy-OFy3rB2
         spreadsheetId=spreadsheet_id, range=f'{sheet_name}!{currentRowNumber+1}:{currentRowNumber+1}',
         valueInputOption='USER_ENTERED', body=body).execute()
     log_print('Results Uploaded', logger)
+
+def compute_cm_binary(y_pred, y):
+    TP = np.logical_and(y_pred == 1, y == 1).sum()
+    TN = np.logical_and(y_pred == 0, y == 0).sum()
+    FP = np.logical_and(y_pred == 1, y == 0).sum()
+    FN = np.logical_and(y_pred == 0, y == 1).sum()
+    return TN, FP, FN, TP
+
+def get_iou_score(y_pred, y, threshold):
+    y_pred = np.where(y_pred > threshold, 1, 0)
+    tn ,fp, fn, tp = compute_cm_binary(y_pred, y)
+    iou_score = (2*tp) / (2*tp + fp + fn)
+    return iou_score

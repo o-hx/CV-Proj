@@ -8,14 +8,17 @@ import datetime as dt
 import matplotlib.pyplot as plt
 import time
 import torchvision
+import seaborn as sns
 
-from sklearn.metrics import confusion_matrix
+from segmentation_models_pytorch.utils.metrics import IoU
+from sklearn.metrics import roc_curve, roc_auc_score
 from copy import deepcopy
 from tqdm import tqdm as tqdm
 from segmentation_models_pytorch.utils.meter import AverageValueMeter
 from collections import OrderedDict
+from utils.misc import log_print, compute_cm_binary, get_iou_score
 
-from utils.misc import log_print
+sns.set()
 
 class Epoch:
     def __init__(self, model, loss, metrics, stage_name, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True):
@@ -50,12 +53,6 @@ class Epoch:
 
     @staticmethod
     def get_confusion_matrix(y_pred, y, threshold = 0.5):
-        def _cm(y_pred, y):
-            TP = np.logical_and(y_pred == 1, y == 1).sum()
-            TN = np.logical_and(y_pred == 0, y == 0).sum()
-            FP = np.logical_and(y_pred == 1, y == 0).sum()
-            FN = np.logical_and(y_pred == 0, y == 1).sum()
-            return TN, FP, FN, TP
 
         # Shape of y and y_pred = (bs, class, height, width)
         # Takes in y and y_pred and returns a class * [tn, fp, fn, tp]  array
@@ -75,7 +72,7 @@ class Epoch:
 
         cm = []
         for clas in range(classes):
-            tn, fp, fn, tp = _cm(y[clas,:], y_pred[clas,:])
+            tn, fp, fn, tp = compute_cm_binary(y[clas,:], y_pred[clas,:])
             cm.append([tn, fp, fn, tp])
         return np.array(cm)
 
@@ -92,6 +89,7 @@ class Epoch:
 
         metrics_meters = {f'{metric.__name__}_{_class}': AverageValueMeter() for metric in self.metrics for _class in metric_meter_classes}
         confusion_matrices_epoch = []
+        thresholding = None
         with tqdm(dataloader, desc=self.stage_name, file=sys.stdout, disable=not (self.verbose)) as iterator:
             # Run for 1 epoch
             for x, y in iterator:
@@ -133,7 +131,7 @@ class Epoch:
         log_print(" ".join([f"{k}:{v:.4f}" for k, v in cumulative_logs.items()]), self.logger)
         for i in range(len(self.classes)):
             log_print(f"Confusion Matrix of {self.classes[i]}, TN: {confusion_matrices_epoch[i,0]}. FP: {confusion_matrices_epoch[i,1]}, FN: {confusion_matrices_epoch[i,2]}, TP: {confusion_matrices_epoch[i,3]}", self.logger)
-        return cumulative_logs, confusion_matrices_epoch
+        return cumulative_logs, confusion_matrices_epoch, thresholding
 
 class TrainEpoch(Epoch):
     def __init__(self, model, loss, metrics, optimizer, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True):
@@ -250,6 +248,95 @@ def plot_cm(confusion_matrices, classes, validation_dataloader_list, start_time,
             
     fig.suptitle(f'Confusion Matrix Plot Across Epochs', fontsize=20)
     plt.savefig(os.path.join(plots_save_path,"nn_training_cm_" + str(start_time).replace(':','').replace('  ',' ').replace(' ','_') + ".png"))
+    plt.close()
+
+def plot_roc_iou(dataloader_list,
+                dataloader_name_list,
+                model,
+                classes = ['sugar','flower','fish','gravel'],
+                batch_samples = 10,
+                device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+                logger = None,
+                plots_save_path = os.path.join(os.getcwd(),'roc_iou_plots')):
+
+    if not os.path.exists(plots_save_path):
+        os.makedirs(plots_save_path)
+
+    log_print('Running Inference...', logger)
+    picture_iou_scores = OrderedDict()
+
+    if torch.cuda.is_available():
+        model.cuda()
+
+    y_pred = []
+    y = []
+
+    for dataloader_idx, dataloader in enumerate(dataloader_list):
+        y_pred_dl = []
+        y_dl = []
+        with tqdm(enumerate(dataloader), desc='Inference', file=sys.stdout, disable=False, total=batch_samples) as iterator:
+            for data_idx, data in iterator:
+                if data_idx == batch_samples:
+                    break
+                inputs = data[0].to(device)
+                masks_pred = model(inputs)
+                masks = data[1].to(device)
+                if masks_pred.shape[1] != len(classes):
+                    raise Exception('Your model predicts more classes than the number of classes specified')
+                y_pred_dl.append(masks_pred)
+                y_dl.append(masks)
+        y_pred_dl, y_dl = torch.cat(y_pred_dl).cpu().detach(), torch.cat(y_dl).type(torch.long).cpu().detach()
+        y_pred.append(y_pred_dl)
+        y.append(y_dl)
+
+    iou_scores = []
+    threshold_intervals = np.round(np.linspace(0,1,21),2).tolist()
+    for dataloader_idx in range(len(dataloader_list)):
+        iou_scores_dl = []
+        for clas in range(len(classes)):
+            temp_ls = []
+            for threshold in threshold_intervals:
+                temp_ls.append(IoU(threshold=threshold)(y_pred[dataloader_idx][:,clas,:,:], y[dataloader_idx][:,clas,:,:]).item())
+            iou_scores_dl.append(temp_ls)
+        iou_scores.append(iou_scores_dl)
+
+    # iou_scores is a list of four sublists, one for each class
+    # each sublist contains distribution of iou scores across threshold intervals
+    # threshold interval is from 0 to 1 inclusive, at 0.5 interval
+    
+    def create_roc_plot(y_pred, y, ax, classes, dl_name, colors = ['blue','green','red','orange']):
+        for class_idx, clas in enumerate(classes):
+            label = y[:,class_idx,:,:].flatten()
+            pred = y_pred[:,class_idx,:,:].flatten()
+            fpr, tpr, _ = roc_curve(label, pred)
+            auc = roc_auc_score(label, pred)
+            ax.set_xticks(np.arange(0, 1.05, 0.1))
+            ax.plot(fpr,tpr,label=f'{clas}, auc = {auc:.3f}', color = colors[class_idx])
+        ax.legend()
+        ax.set_title(f'ROC Plot for {dl_name}', fontsize=12)
+    
+    def create_threshold_plot(iou_scores, threshold_intervals, ax, classes, dl_name, colors = ['blue','green','red','orange']):
+        for class_idx, clas in enumerate(classes):
+            class_iou_scores = iou_scores[class_idx]
+            best_iou_index = class_iou_scores.index(max(class_iou_scores))
+            optimal_threshold = threshold_intervals[best_iou_index]
+            ax.set_xticks(np.arange(0, 1.05, 0.1))
+            ax.plot(threshold_intervals, class_iou_scores, label=f'{clas}, best_thresh = {optimal_threshold:.3f}')
+        ax.legend()
+        ax.set_title(f'IOU Plot for {dl_name}', fontsize=12)
+
+    fig, ax = plt.subplots(2,len(dataloader_list), figsize=(14, 5*len(dataloader_list)))
+    for dl_idx, dl in enumerate(dataloader_list):
+        if len(dataloader_list) == 1:
+            create_roc_plot(y_pred[dl_idx].numpy(), y[dl_idx].numpy(), ax[0], classes, dataloader_name_list[dl_idx])
+            create_threshold_plot(iou_scores[dl_idx], threshold_intervals, ax[1], classes, dataloader_name_list[dl_idx])
+        else:
+            create_roc_plot(y_pred[dl_idx].numpy(), y[dl_idx].numpy(), ax[0,dl_idx], classes, dataloader_name_list[dl_idx])
+            create_threshold_plot(iou_scores[dl_idx], threshold_intervals, ax[1,dl_idx], classes, dataloader_name_list[dl_idx])
+
+    current_time = str(dt.datetime.now())[0:10].replace('-','_')
+    plt.savefig(os.path.join(plots_save_path,"roc_iou_" + current_time + ".png"))
+    log_print('ROC and IoU Plot Saved', logger)
     plt.close()
 
 def train_model(train_dataloader,
