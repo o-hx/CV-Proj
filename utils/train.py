@@ -312,6 +312,7 @@ def plot_roc_iou(dataloader_list,
             auc = roc_auc_score(label, pred)
             ax.set_xticks(np.arange(0, 1.05, 0.1))
             ax.plot(fpr,tpr,label=f'{clas}, auc = {auc:.3f}', color = colors[class_idx])
+            ax.plot(np.linspace(0,1,11),np.linspace(0,1,11), '--', color = 'black')
         ax.legend()
         ax.set_title(f'ROC Plot for {dl_name}', fontsize=12)
     
@@ -334,7 +335,7 @@ def plot_roc_iou(dataloader_list,
             create_roc_plot(y_pred[dl_idx].numpy(), y[dl_idx].numpy(), ax[0,dl_idx], classes, dataloader_name_list[dl_idx])
             create_threshold_plot(iou_scores[dl_idx], threshold_intervals, ax[1,dl_idx], classes, dataloader_name_list[dl_idx])
 
-    current_time = str(dt.datetime.now())[0:19].replace('-','_').replace(' ','_')
+    current_time = str(dt.datetime.now())[0:19].replace('-','_').replace(' ','_').replace(':','_')
     plt.savefig(os.path.join(plots_save_path,"roc_iou_" + current_time + ".png"))
     log_print('ROC and IoU Plot Saved', logger)
     plt.close()
