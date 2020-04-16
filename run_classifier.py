@@ -28,10 +28,10 @@ if __name__ == '__main__':
     test_image_filepath = os.path.join(cwd,'data','test_images')
     df_filepath = os.path.join(cwd,'data','train.csv')
     seed = 2
-    batch_size = 8
-    img_size = (int(6*64), int(9*64))
+    batch_size = 2
+    img_size = (int(10*64), int(15*64))
     start_lr = 0.001
-    classes = ['flower','fish']
+    classes = ['flower','gravel']
     threshold = 0.5
     total_epochs = 20
 
@@ -77,8 +77,8 @@ if __name__ == '__main__':
     ])
 
     # Scheduler
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 10, T_mult=1, eta_min=0)
-    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size =1, gamma=0.8)
+    # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 10, T_mult=1, eta_min=0)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size =10, gamma=0.1)
 
     losses, metric_values, best_epoch, confusion_matrices = train_model(train_dataloader = train_dl,
                                                             validation_dataloader_list = [valid_dl],

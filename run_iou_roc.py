@@ -66,8 +66,8 @@ if __name__ == '__main__':
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','gravelUnet_EfficientNetEncoder_best_model.pth'), map_location = device)
     
-    plot_roc_iou(dataloader_list = [validation_dataloader],
-                dataloader_name_list = ['Val DL No Empty'],
+    plot_roc_iou(dataloader_list = [valid_dl_no_empty, validation_dataloader],
+                dataloader_name_list = ['Val DL No Empty', 'Full Validation Set'],
                 model = segmentation_model,
                 classes = classes,
                 batch_samples = 1,
