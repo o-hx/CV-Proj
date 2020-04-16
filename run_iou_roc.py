@@ -26,7 +26,7 @@ if __name__ == '__main__':
     test_image_filepath = os.path.join(cwd,'data','test_images')
     df_filepath = os.path.join(cwd,'data','train.csv')
     seed = 2
-    batch_size = 10
+    batch_size = 3
     img_size = (int(4*64), int(6*64))
     classes = ['gravel']
     iou_threshold = 0.5
@@ -70,7 +70,7 @@ if __name__ == '__main__':
                 dataloader_name_list = ['Val DL No Empty', 'Full Validation Set'],
                 model = segmentation_model,
                 classes = classes,
-                batch_samples = 1,
+                batch_samples = 2,
                 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
                 logger = logging,
                 plots_save_path = os.path.join(os.getcwd(),'roc_iou_plots'))
