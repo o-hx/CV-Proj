@@ -29,10 +29,10 @@ if __name__ == '__main__':
     test_image_filepath = os.path.join(cwd,'data','test_images')
     df_filepath = os.path.join(cwd,'data','train.csv')
     seed = 2
-    batch_size = 16
+    batch_size = 8
     img_size = (int(4*64), int(6*64))
     start_lr = 0.0005
-    classes = ['sugar','flower','fish','gravel']
+    classes = ['fish']
     iou_threshold = 0.5
     total_epochs = 10
     grayscale = False
@@ -72,7 +72,7 @@ if __name__ == '__main__':
                                                                                 )
 
     # Define Model
-    segmentation_model = smp.Unet('efficientnet-b0', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type='scse')
+    segmentation_model = Unet('efficientnet-b0', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type='msa')
     #segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','densenet169_best_model.pth'))
     model_save_prefix = ' '.join(classes) + get_module_name(segmentation_model) + '_' + get_module_name(segmentation_model.encoder) + '_'
 

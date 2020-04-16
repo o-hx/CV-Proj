@@ -17,7 +17,6 @@ class PAM_Module(nn.Module):
         self.query_conv = nn.Conv2d(in_channels=in_dim, out_channels=1, kernel_size=1)
         self.key_conv = nn.Conv2d(in_channels=in_dim, out_channels=1, kernel_size=1)
         self.value_conv = nn.Conv2d(in_channels=in_dim, out_channels=in_dim, kernel_size=1)
-        self.gamma = nn.Parameter(torch.zeros(1))
 
         self.softmax = nn.Softmax(dim=-1)
     def forward(self, x):
@@ -40,8 +39,6 @@ class PAM_Module(nn.Module):
 
         out = torch.bmm(proj_value, attention.permute(0, 2, 1))
         out = out.view(m_batchsize, C, height, width)
-
-        out = self.gamma * out + x
         return out
 
 class CAM_Module(nn.Module):
@@ -49,8 +46,6 @@ class CAM_Module(nn.Module):
     def __init__(self, in_dim):
         super(CAM_Module, self).__init__()
         self.chanel_in = in_dim
-        
-        self.gamma = nn.Parameter(torch.zeros(1))
         self.softmax  = nn.Softmax(dim=-1)
     def forward(self,x):
         """
@@ -73,8 +68,6 @@ class CAM_Module(nn.Module):
 
         out = torch.bmm(attention, proj_value)
         out = out.view(m_batchsize, C, height, width)
-
-        out = self.gamma * out + x
         return out
 
 class PAM_CAM_Layer(nn.Module):
@@ -106,10 +99,20 @@ class PAM_CAM_Layer(nn.Module):
         return self.attn(x)
 
 class PAM_CAM_Module(nn.Module):
+    '''
+    To fit into memory requirements, we have to downsample and then upsample the 
+    '''
     def __init__(self, in_channels):
         super(PAM_CAM_Module, self).__init__()
-        self.pam = PAM_CAM_Layer(in_channels)
-        self.cam = PAM_CAM_Layer(in_channels, use_pam = False)
+        self.pre_mod = nn.Conv2d(in_channels, max(in_channels//8,1), kernel_size=4, padding=0, stride=4)
+        self.pam = PAM_CAM_Layer(max(in_channels//8,1))
+        self.cam = PAM_CAM_Layer(max(in_channels//8,1), use_pam = False)
+        self.post_mod = nn.ConvTranspose2d(max(in_channels//8,1), in_channels, kernel_size=4, padding=0, stride=4)
+        self.gamma = nn.Parameter(torch.zeros(1))
     
     def forward(self, x):
-        return self.pam(x) + self.cam(x)
+        preX = x
+        x = self.pre_mod(x)
+        x = self.pam(x) + self.cam(x)
+        x = self.post_mod(x)
+        return preX + self.gamma*x
