@@ -102,12 +102,12 @@ class PAM_CAM_Module(nn.Module):
     '''
     To fit into memory requirements, we have to downsample and then upsample the 
     '''
-    def __init__(self, in_channels):
+    def __init__(self, in_channels, down_sample_channel_factor = 8, downsample_wh_factor = 4):
         super(PAM_CAM_Module, self).__init__()
-        self.pre_mod = nn.Conv2d(in_channels, max(in_channels//8,1), kernel_size=4, padding=0, stride=4)
-        self.pam = PAM_CAM_Layer(max(in_channels//8,1))
-        self.cam = PAM_CAM_Layer(max(in_channels//8,1), use_pam = False)
-        self.post_mod = nn.ConvTranspose2d(max(in_channels//8,1), in_channels, kernel_size=4, padding=0, stride=4)
+        self.pre_mod = nn.Conv2d(in_channels, max(in_channels//down_sample_channel_factor,1), kernel_size=downsample_wh_factor, padding=0, stride=downsample_wh_factor)
+        self.pam = PAM_CAM_Layer(max(in_channels//down_sample_channel_factor,1))
+        self.cam = PAM_CAM_Layer(max(in_channels//down_sample_channel_factor,1), use_pam = False)
+        self.post_mod = nn.ConvTranspose2d(max(in_channels//down_sample_channel_factor,1), in_channels, kernel_size=downsample_wh_factor, padding=0, stride=downsample_wh_factor)
         self.gamma = nn.Parameter(torch.zeros(1))
     
     def forward(self, x):

@@ -89,7 +89,6 @@ class Epoch:
 
         metrics_meters = {f'{metric.__name__}_{_class}': AverageValueMeter() for metric in self.metrics for _class in metric_meter_classes}
         confusion_matrices_epoch = []
-        thresholding = None
         with tqdm(dataloader, desc=self.stage_name, file=sys.stdout, disable=not (self.verbose)) as iterator:
             # Run for 1 epoch
             for x, y in iterator:
@@ -131,7 +130,7 @@ class Epoch:
         log_print(" ".join([f"{k}:{v:.4f}" for k, v in cumulative_logs.items()]), self.logger)
         for i in range(len(self.classes)):
             log_print(f"Confusion Matrix of {self.classes[i]}, TN: {confusion_matrices_epoch[i,0]}. FP: {confusion_matrices_epoch[i,1]}, FN: {confusion_matrices_epoch[i,2]}, TP: {confusion_matrices_epoch[i,3]}", self.logger)
-        return cumulative_logs, confusion_matrices_epoch, thresholding
+        return cumulative_logs, confusion_matrices_epoch
 
 class TrainEpoch(Epoch):
     def __init__(self, model, loss, metrics, optimizer, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True):
