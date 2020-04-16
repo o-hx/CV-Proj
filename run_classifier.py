@@ -9,7 +9,7 @@ import torchvision
 from utils.data_classifier import prep_classification_data, get_augmentations
 from utils.train import train_model
 from utils.misc import upload_google_sheets, get_module_name, log_print
-from models import BinaryFocalLoss, Accuracy
+from models.auxillary import BinaryFocalLoss, Accuracy
 
 if __name__ == '__main__':
     # Set up logging
