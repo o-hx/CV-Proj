@@ -132,7 +132,7 @@ class DecoderBlock(nn.Module):
             padding=1,
             use_batchnorm=use_batchnorm,
         )
-        self.attention2 = choose_attention(attention_type = attention_type, in_channels = out_channels)
+        self.attention2 = choose_attention(attention_type = 'scse', in_channels = out_channels)
 
     def forward(self, x, skip=None):
         x = F.interpolate(x, scale_factor=2, mode="nearest")
