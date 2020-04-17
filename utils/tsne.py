@@ -36,12 +36,15 @@ def prep_df(df_filepath, label):
     return df
 
 class Dataset(data.Dataset):
-    def __init__(self, image_filepath, EncodedPixels, size):
+    def __init__(self, image_filepath, EncodedPixels, size, normalise):
         self.image_filepath = image_filepath
         self.EncodedPixels = EncodedPixels
         self.size = size
+        self.normalise = normalise
+
     def __len__(self):
         return len(self.image_filepath)
+
     def __getitem__(self, index):
         ID = self.image_filepath[index]
         x1, y1, x2, y2 = rle2bb(self.EncodedPixels[index])
@@ -50,17 +53,20 @@ class Dataset(data.Dataset):
         resize = transforms.Resize(self.size)
         trans1 = transforms.ToTensor()
         img = trans1(resize(img))
+        if normalise:
+            norma = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            img = norma(img)
         return img
 
 
-def get_dataloader(df_filepath, train_image_filepath, img_size, label):
+def get_dataloader(df_filepath, train_image_filepath, img_size, label, normalise, batch_size):
     assert label in ['fish', 'sugar', 'gravel', 'flower'], "Please choose one of the following: 'fish', 'sugar', 'gravel', 'flower'"
     df = prep_df(df_filepath, label)
     image_filepath = [f'{train_image_filepath}/{i}' for i in df['image'].tolist()]
     encodedpixels = df['EncodedPixels'].tolist()
     assert len(image_filepath) == len(encodedpixels), "Make sure lengths same"
 
-    dl = data.DataLoader(Dataset(image_filepath, encodedpixels, img_size))
+    dl = data.DataLoader(Dataset(image_filepath, encodedpixels, img_size, normalise), batch_size=batch_size)
     return dl
 
 if __name__ == "__main__":
@@ -70,10 +76,14 @@ if __name__ == "__main__":
     seed = 2
     label = 'flower'
     img_size = (250, 250)
+    normalise = True
+    batch_size = 16
 
-    dl = get_dataloader(df_filepath, train_image_filepath, img_size, label)
+    dl = get_dataloader(df_filepath, train_image_filepath, img_size, label, normalise, batch_size)
     for idx, img in enumerate(dl):
+        print(img.shape)
         trans = transforms.ToPILImage()
         trans1 = transforms.ToTensor()
         trans(img[0]).show()
         break
+
