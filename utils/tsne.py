@@ -66,8 +66,17 @@ def get_dataloader(df_filepath, train_image_filepath, img_size, label, normalise
     encodedpixels = df['EncodedPixels'].tolist()
     assert len(image_filepath) == len(encodedpixels), "Make sure lengths same"
 
-    dl = data.DataLoader(Dataset(image_filepath, encodedpixels, img_size, normalise), batch_size=batch_size)
-    return dl
+    # Split train & val
+    image_filepath_trainset = image_filepath[:int(len(image_filepath) * 0.8)]
+    image_filepath_valset = image_filepath[int(len(image_filepath) * 0.8):]
+
+    encodedpixels_trainset = encodedpixels[:int(len(encodedpixels) * 0.8)]
+    encodedpixels_valset = encodedpixels[:int(len(encodedpixels) * 0.8)]
+
+    train_dl = data.DataLoader(Dataset(image_filepath_trainset, encodedpixels_trainset, img_size, normalise), batch_size=batch_size)
+    val_dl = data.DataLoader(Dataset(image_filepath_valset, encodedpixels_valset, img_size, normalise), batch_size=batch_size)
+
+    return train_dl, val_dl
 
 if __name__ == "__main__":
     cwd = os.getcwd()
@@ -79,11 +88,12 @@ if __name__ == "__main__":
     normalise = True
     batch_size = 16
 
-    dl = get_dataloader(df_filepath, train_image_filepath, img_size, label, normalise, batch_size)
-    for idx, img in enumerate(dl):
+    train_dl, val_dl = get_dataloader(df_filepath, train_image_filepath, img_size, label, normalise, batch_size)
+    print(len(train_dl))
+    print(len(val_dl))
+    for idx, img in enumerate(val_dl):
         print(img.shape)
         trans = transforms.ToPILImage()
         trans1 = transforms.ToTensor()
         trans(img[0]).show()
         break
-
