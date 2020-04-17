@@ -53,7 +53,7 @@ class Dataset(data.Dataset):
         resize = transforms.Resize(self.size)
         trans1 = transforms.ToTensor()
         img = trans1(resize(img))
-        if normalise:
+        if self.normalise:
             norma = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             img = norma(img)
         return img
