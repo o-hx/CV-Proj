@@ -84,7 +84,7 @@ class IterDataset(data.IterableDataset):
                     if self.normalise:
                         norma = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
                         img_cropped = norma(img_cropped)
-                    yield img_cropped
+                    yield img_cropped, img_cropped
     def __iter__(self):        
         return self.get_masks()
 
@@ -94,7 +94,6 @@ def get_dataloader(df_filepath, train_image_filepath, img_size, label, normalise
     image_filepath = [f'{train_image_filepath}/{i}' for i in df['image'].tolist()]
     encodedpixels = df['EncodedPixels'].tolist()
     assert len(image_filepath) == len(encodedpixels), "Make sure lengths same"
-    print(len(image_filepath))
 
     # Split train & val
     image_filepath_trainset = image_filepath[:int(len(image_filepath) * 0.8)]
@@ -106,8 +105,8 @@ def get_dataloader(df_filepath, train_image_filepath, img_size, label, normalise
     assert len(image_filepath_trainset) == len(encodedpixels_trainset), f"Check length of image_filepath_trainset: {len(image_filepath_trainset)} and encodedpixels_trainset: {len(encodedpixels_trainset)}"
     assert len(image_filepath_valset) == len(encodedpixels_valset), f"Check length of image_filepath_valset: {len(image_filepath_valset)} and encodedpixels_valset: {len(encodedpixels_valset)}"
 
-    train_dl = data.DataLoader(IterDataset(image_filepath_trainset, encodedpixels_trainset, img_size, normalise), batch_size=batch_size, drop_last = True)
-    val_dl = data.DataLoader(IterDataset(image_filepath_valset, encodedpixels_valset, img_size, normalise), batch_size=batch_size, drop_last = True)
+    train_dl = data.DataLoader(IterDataset(image_filepath_trainset, encodedpixels_trainset, img_size, normalise), batch_size=batch_size, drop_last = True, num_workers=12)
+    val_dl = data.DataLoader(IterDataset(image_filepath_valset, encodedpixels_valset, img_size, normalise), batch_size=batch_size, drop_last = True, num_workers=8)
 
     return train_dl, val_dl
 

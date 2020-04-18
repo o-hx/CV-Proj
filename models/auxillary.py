@@ -89,3 +89,13 @@ class Accuracy(Metric):
             threshold=self.threshold,
             ignore_channels=self.ignore_channels,
         )
+
+# Define MSE Metric
+class MSE(Metric):
+    def __init__(self, ignore_channels=None, **kwargs):
+        super().__init__(**kwargs)
+        self.ignore_channels = ignore_channels
+
+    def forward(self, y_pr, y_gt):
+        y_pr, y_gt = _take_channels(y_pr, y_gt, ignore_channels=self.ignore_channels)
+        return torch.nn.functional.mse_loss(y_gt, y_pr)

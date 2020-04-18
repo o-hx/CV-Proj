@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 '''
 The position and channel attention modules are from https://arxiv.org/pdf/1906.02849.pdf
-Code is adapted, and modified from https://github.com/sinAshish/Multi-Scale-Attention
+Code is adapted, and extensively modified from https://github.com/sinAshish/Multi-Scale-Attention. All BMM features have been removed to reduce memory usage
 '''
 
 class PAM_Module(nn.Module):

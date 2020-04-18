@@ -32,7 +32,7 @@ if __name__ == '__main__':
     batch_size = 8
     img_size = (int(4*64), int(6*64))
     start_lr = 0.0005
-    classes = ['fish']
+    classes = ['gravel']
     iou_threshold = 0.5
     total_epochs = 10
     grayscale = False

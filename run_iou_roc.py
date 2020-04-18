@@ -49,19 +49,19 @@ if __name__ == '__main__':
 
     log_print('Preparing dataloaders', logging)
     _, validation_dataloader, valid_dl_no_empty, _ = prepare_dataloader(train_image_filepath = train_image_filepath,
-                                                                                test_image_filepath = test_image_filepath,
-                                                                                df_filepath = df_filepath,
-                                                                                seed = seed,
-                                                                                train_transform = train_transform,
-                                                                                test_transform = test_transform,
-                                                                                mask_transform= mask_transform,
-                                                                                size = img_size,
-                                                                                batch_size = batch_size, 
-                                                                                label = classes, 
-                                                                                data_augmentations = data_augmentations, 
-                                                                                grayscale = grayscale,
-                                                                                drop_empty = drop_empty
-                                                                                )
+                                                                        test_image_filepath = test_image_filepath,
+                                                                        df_filepath = df_filepath,
+                                                                        seed = seed,
+                                                                        train_transform = train_transform,
+                                                                        test_transform = test_transform,
+                                                                        mask_transform= mask_transform,
+                                                                        size = img_size,
+                                                                        batch_size = batch_size, 
+                                                                        label = classes, 
+                                                                        data_augmentations = data_augmentations, 
+                                                                        grayscale = grayscale,
+                                                                        drop_empty = drop_empty
+                                                                        )
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','gravelUnet_EfficientNetEncoder_best_model.pth'), map_location = device)

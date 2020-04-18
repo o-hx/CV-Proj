@@ -8,20 +8,21 @@ import datetime as dt
 import matplotlib.pyplot as plt
 import time
 import torchvision
+import random
 import seaborn as sns
+import pickle
 
 from segmentation_models_pytorch.utils.metrics import IoU
-from sklearn.metrics import roc_curve, roc_auc_score
+from sklearn.metrics import roc_curve, roc_auc_score, silhouette_score
 from copy import deepcopy
 from tqdm import tqdm as tqdm
 from segmentation_models_pytorch.utils.meter import AverageValueMeter
 from collections import OrderedDict
 from utils.misc import log_print, compute_cm_binary, get_iou_score
-
-sns.set()
+from sklearn.cluster import KMeans
 
 class Epoch:
-    def __init__(self, model, loss, metrics, stage_name, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True):
+    def __init__(self, model, loss, metrics, stage_name, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True, autoencoder = False):
         self.model = model
         self.loss = loss
         self.metrics = metrics
@@ -31,6 +32,7 @@ class Epoch:
         self.logger = logger
         self.classes = classes
         self.enable_class_wise_metrics = enable_class_wise_metrics
+        self.autoencoder = autoencoder
 
         self._to_device()
 
@@ -128,12 +130,13 @@ class Epoch:
         cumulative_logs = {k: v.sum/v.n for k, v in metrics_meters.items()}
         cumulative_logs['loss'] = loss_meter.sum/loss_meter.n
         log_print(" ".join([f"{k}:{v:.4f}" for k, v in cumulative_logs.items()]), self.logger)
-        for i in range(len(self.classes)):
-            log_print(f"Confusion Matrix of {self.classes[i]}, TN: {confusion_matrices_epoch[i,0]}. FP: {confusion_matrices_epoch[i,1]}, FN: {confusion_matrices_epoch[i,2]}, TP: {confusion_matrices_epoch[i,3]}", self.logger)
+        if not self.autoencoder:
+            for i in range(len(self.classes)):
+                log_print(f"Confusion Matrix of {self.classes[i]}, TN: {confusion_matrices_epoch[i,0]}. FP: {confusion_matrices_epoch[i,1]}, FN: {confusion_matrices_epoch[i,2]}, TP: {confusion_matrices_epoch[i,3]}", self.logger)
         return cumulative_logs, confusion_matrices_epoch
 
 class TrainEpoch(Epoch):
-    def __init__(self, model, loss, metrics, optimizer, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True):
+    def __init__(self, model, loss, metrics, optimizer, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True, autoencoder = False):
         super().__init__(
             model=model,
             loss=loss,
@@ -143,7 +146,8 @@ class TrainEpoch(Epoch):
             verbose=verbose,
             logger=logger,
             classes = classes,
-            enable_class_wise_metrics = enable_class_wise_metrics
+            enable_class_wise_metrics = enable_class_wise_metrics,
+            autoencoder = autoencoder
         )
         self.optimizer = optimizer
 
@@ -161,7 +165,7 @@ class TrainEpoch(Epoch):
         return loss_value, prediction
 
 class ValidEpoch(Epoch):
-    def __init__(self, model, loss, metrics, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True):
+    def __init__(self, model, loss, metrics, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True, autoencoder = False):
         super().__init__(
             model=model,
             loss=loss,
@@ -171,7 +175,8 @@ class ValidEpoch(Epoch):
             verbose=verbose,
             logger = logger,
             classes = classes,
-            enable_class_wise_metrics = enable_class_wise_metrics
+            enable_class_wise_metrics = enable_class_wise_metrics,
+            autoencoder = autoencoder
         )
 
     def on_epoch_start(self):
@@ -349,6 +354,7 @@ def train_model(train_dataloader,
                 batch_size = 1,
                 num_epochs = 12,
                 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+                autoencoder = False,
                 classes = ['sugar','flower','fish','gravel'],
                 logger = None,
                 verbose = True,
@@ -373,7 +379,8 @@ def train_model(train_dataloader,
         device = device,
         verbose = verbose,
         logger = logger,
-        classes = classes
+        classes = classes,
+        autoencoder = autoencoder
     )
 
     valid_epoch = ValidEpoch(
@@ -383,7 +390,8 @@ def train_model(train_dataloader,
         device = device,
         verbose = verbose,
         logger = logger,
-        classes = classes
+        classes = classes,
+        autoencoder = autoencoder
     )
 
     # Record for plotting
@@ -434,18 +442,154 @@ def train_model(train_dataloader,
 
     log_print(f'Best epoch: {best_epoch} Best Performance Measure: {best_perfmeasure:.5f}', logger)
     log_print(f'Time Taken to train: {dt.datetime.now()-start_time}', logger)
-
+    
     plot_loss_metrics(validation_dataloader_list, losses, metrics, metric_values, metric_names, optimizer.state_dict()['param_groups'][0]['lr'], num_epochs, batch_size, plots_save_path, start_time, logger = logger)
-    plot_cm(confusion_matrices, classes, validation_dataloader_list, start_time, plots_save_path, logger = logger)
+    if not autoencoder:
+        plot_cm(confusion_matrices, classes, validation_dataloader_list, start_time, plots_save_path, logger = logger)
+        # Sum up confusion matrix along all batches
+        confusion_matrices['train'] = confusion_matrices['train'][-1]
+        for valid_idx in range(len(validation_dataloader_list)):
+            confusion_matrices['val'][valid_idx] = confusion_matrices['val'][valid_idx][-1]
+        for i in range(len(classes)):
+            log_print(f"Confusion Matrix of {classes[i]}, TN: {confusion_matrices['val'][0][i,0]}. FP: {confusion_matrices['val'][0][i,1]}, FN: {confusion_matrices['val'][0][i,2]}, TP: {confusion_matrices['val'][0][i,3]}", logger)
 
-    # Sum up confusion matrix along all batches
-    confusion_matrices['train'] = confusion_matrices['train'][-1]
-    for valid_idx in range(len(validation_dataloader_list)):
-        confusion_matrices['val'][valid_idx] = confusion_matrices['val'][valid_idx][-1]
-    for i in range(len(classes)):
-        log_print(f"Confusion Matrix of {classes[i]}, TN: {confusion_matrices['val'][0][i,0]}. FP: {confusion_matrices['val'][0][i,1]}, FN: {confusion_matrices['val'][0][i,2]}, TP: {confusion_matrices['val'][0][i,3]}", logger)
+        return losses, metric_values, best_epoch, confusion_matrices
+    else:
+        return losses, metric_values, best_epoch, model
 
-    return losses, metric_values, best_epoch, confusion_matrices
+def cluster(model,
+            dataloader,
+            k,
+            criterion,
+            optimizer,
+            scheduler = None,
+            total_epochs = 10,
+            device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+            logger = None,
+            tolerance = 0.001,
+            model_save_prefix = '',
+            model_save_path = os.path.join(os.getcwd(),'cluster_weights')
+            ):
+
+    def target_distribution(q):
+        weight = torch.pow(q,2)/q.sum(axis = 0)
+        return (weight.T/weight.sum(1)).T
+    
+    assert k > 1, 'K Must be larger than 1'
+
+    model.to(device)
+    model.switch_to_kmeans(k)
+
+    # Set initial KMeans cluster centres
+    log_print('Computing KMeans', logger)
+    kmeans = KMeans(n_clusters=k, n_init=10)
+    _, data = next(enumerate(dataloader))
+    y_pred_last = kmeans.fit_predict(model.encoder.forward(data[0].to(device)).detach().cpu().numpy())
+    log_print('KMeans Computed', logger)
+    model.k_means_weights.data.copy_(torch.from_numpy(kmeans.cluster_centers_))
+    log_print('Initial Cluster Centres Added', logger)
+
+    for ite in range(total_epochs):
+        loss_meter = AverageValueMeter()
+        metric_meter = AverageValueMeter()
+        y_preds_last_epoch = []
+        y_preds_epoch = []
+        with tqdm(dataloader, desc=f'Clustering Epoch {ite+1}', file=sys.stdout, disable=False) as iterator:
+            for _, data in enumerate(iterator):
+                x, _ = data
+                x = x.to(device)
+                optimizer.zero_grad()
+                q, features = model(x)
+                p = target_distribution(q).detach()
+
+                loss = criterion(torch.log(q),p)
+                loss.backward()
+                optimizer.step()
+
+                labels = torch.argmax(q, axis = 1).detach().cpu().numpy()
+                y_preds_epoch.append(labels)
+
+                loss_value = loss.cpu().detach().numpy()
+                loss_meter.add(loss_value)
+
+                metric_meter.add(silhouette_score(features.detach().cpu().numpy(), labels))
+
+                iterator.set_postfix_str(f'DKL Loss: {loss_meter.mean:.3f} Silhouette: {metric_meter.mean:.3f}')
+
+        y_preds_epoch = np.concatenate(y_preds_epoch)
+        if ite > 0:
+            delta_preds = np.sum(y_preds_epoch != y_preds_last_epoch).astype(np.float32)
+            total_preds = y_preds_epoch.shape[0]
+            log_print(f'Total Different Predictions: {int(delta_preds)}', logger)
+            log_print(f'Total Predictions: {total_preds}', logger)
+            if ite > 0 and delta_preds <= max(int(tolerance*total_preds),1):
+                print('Reached tolerance threshold. Stopping training.')
+                break
+        y_preds_last_epoch = np.copy(y_preds_epoch)
+
+    if not os.path.exists(model_save_path):
+        os.makedirs(model_save_path)
+
+    torch.save(model, os.path.join(model_save_path,model_save_prefix + '_clustering_model.pth'))
+    log_print('Current Model Saved', logger)
+    
+    return model
+
+def plot_clusters(model,
+                k,
+                clas,
+                dataloader,
+                batch_size,
+                original_dataloader,
+                plots_save_path,
+                device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+                logger = None
+                ):
+
+    images = {i:[] for i in range(k)}
+    trans = torchvision.transforms.ToPILImage()
+    
+    with tqdm(zip(dataloader, original_dataloader), desc=f'Clustering Images', file=sys.stdout, disable=False) as iterator:
+        for data, org_data in iterator:
+            img_batch = data[0].to(device)
+            org_img_batch = org_data[1].cpu()
+
+            q, _ = model(img_batch)
+            q = torch.argmax(q, axis = 1).detach()
+            for idx, pred in enumerate(q):
+                img = np.array(trans(org_img_batch[idx]))
+                images[pred.item()].append(img)
+
+    for cluster in range(k):
+        min_image_number = min(36,len(images[cluster]))
+        selected_images = random.sample(images[cluster],k=min_image_number)
+        fig, ax = plt.subplots(6,6, figsize=(20, 20))
+        l = 0
+        for i in range(6):
+            for j in range(6):
+                if l >= min_image_number:
+                    continue
+                ax[i,j].imshow(selected_images[l])
+                l += 1
+
+        current_time = str(dt.datetime.now())[0:10].replace('-','_')
+        if not os.path.exists(os.path.join(plots_save_path,current_time,clas)):
+            os.makedirs(os.path.join(plots_save_path,current_time,clas))
+        fig.suptitle(f'Cluster {cluster}', fontsize=20)
+        plt.savefig(os.path.join(plots_save_path,current_time,clas, f"{cluster}.png"))
+        plt.close()
+        log_print(f'Plot for cluster {cluster} saved', logger)
+
+    pickle.dump(images, open(os.path.join(plots_save_path,current_time,clas,"cluster_predictions.pk"), "wb" ) )
+    log_print(f'Pickle Saved', logger)
+    
+    sns.barplot(x = np.arange(k), y = np.array([len(image_list) for c, image_list in images.items()]))
+    plt.title('Cluster Size')
+    plt.xlabel('Cluster')
+    plt.ylabel('Counts')
+    plt.savefig(os.path.join(plots_save_path,current_time,clas, f"Cluster Size.png"))
+    plt.close()
+    log_print(f'Cluster size plot saved', logger)
 
 def test_model(test_dataloader,
                 model,
