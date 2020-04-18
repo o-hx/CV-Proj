@@ -10,6 +10,7 @@ import pickle
 import matplotlib.pyplot as plt
 from skimage.measure import label, regionprops
 import matplotlib as mpl
+from itertools import cycle
 
 def rle_to_mask(rle_string, width = 2100, height = 1400):
     '''
@@ -53,34 +54,12 @@ def prep_df(df_filepath, label):
     df = df[df['label'] == label.capitalize()]
     df = df.dropna()
     return df
-
-class count_Dataset(data.Dataset):
-    def __init__(self, image_filepath, EncodedPixels, size, normalise):
-        self.image_filepath = image_filepath
-        self.EncodedPixels = EncodedPixels
-        self.size = size
-        self.normalise = normalise
-
-    def __len__(self):
-        return len(self.image_filepath)
-
-    def __getitem__(self, index):
-        ID = self.image_filepath[index]
-        #x1, y1, x2, y2 = bounding_box(rle_to_mask(self.EncodedPixels[index]))
-        img = Image.open(ID)
-        mask = np.array((rle_to_mask(self.EncodedPixels[index], 2100, 1400) * 1)).T
-        mask = np.where(mask > 0, 1, 0)
-        lbl = label(mask)
-        props = regionprops(lbl)
-        props_list = [prop for prop in props if prop.area > 10000]
-        return len(props_list)
 class IterDataset(data.IterableDataset):
     def __init__(self, image_filepath, EncodedPixels, size, normalise):
         self.image_filepath = image_filepath
         self.EncodedPixels = EncodedPixels
         self.size = size
         self.normalise = normalise
-
     def get_masks(self):
         for idx in range(len(self.image_filepath)):
             ID = self.image_filepath[idx]
@@ -90,7 +69,10 @@ class IterDataset(data.IterableDataset):
             lbl = label(mask)
             props = regionprops(lbl)
             props_list = [prop for prop in props if prop.area > 60000]
-            iou = sum([prop.area for prop in props_list])/ sum((prop.bbox[2]-prop.bbox[0])*(prop.bbox[3]-prop.bbox[1]) for prop in props_list)
+            
+            if sum([(prop.bbox[2]-prop.bbox[0])*(prop.bbox[3]-prop.bbox[1]) for prop in props_list]) == 0:
+                continue
+            iou = (sum([prop.area for prop in props_list]))/ (sum([(prop.bbox[2]-prop.bbox[0])*(prop.bbox[3]-prop.bbox[1]) for prop in props_list]))
             if iou < 0.8:
                 continue
             else:
@@ -112,6 +94,7 @@ def get_dataloader(df_filepath, train_image_filepath, img_size, label, normalise
     image_filepath = [f'{train_image_filepath}/{i}' for i in df['image'].tolist()]
     encodedpixels = df['EncodedPixels'].tolist()
     assert len(image_filepath) == len(encodedpixels), "Make sure lengths same"
+    print(len(image_filepath))
 
     # Split train & val
     image_filepath_trainset = image_filepath[:int(len(image_filepath) * 0.8)]
@@ -122,8 +105,6 @@ def get_dataloader(df_filepath, train_image_filepath, img_size, label, normalise
 
     assert len(image_filepath_trainset) == len(encodedpixels_trainset), f"Check length of image_filepath_trainset: {len(image_filepath_trainset)} and encodedpixels_trainset: {len(encodedpixels_trainset)}"
     assert len(image_filepath_valset) == len(encodedpixels_valset), f"Check length of image_filepath_valset: {len(image_filepath_valset)} and encodedpixels_valset: {len(encodedpixels_valset)}"
-
-    #print([i for idx, i in enumerate(count_Dataset(image_filepath_trainset, encodedpixels_trainset, img_size, normalise))])
 
     train_dl = data.DataLoader(IterDataset(image_filepath_trainset, encodedpixels_trainset, img_size, normalise), batch_size=batch_size, drop_last = True)
     val_dl = data.DataLoader(IterDataset(image_filepath_valset, encodedpixels_valset, img_size, normalise), batch_size=batch_size, drop_last = True)
@@ -139,9 +120,9 @@ if __name__ == "__main__":
     normalise = True
     batch_size = 8
     train_dl, val_dl = get_dataloader(df_filepath, train_image_filepath, img_size, lab, normalise, batch_size)
+    tot = 0
     for idx1, img in enumerate(train_dl):
-        print(img.shape)
-        trans = transforms.ToPILImage()
-        for i in range(batch_size):
-            trans(img[i]).show()
-        break
+        tot += img.shape[0]
+    if tot % batch_size * 100:
+        print(tot)
+    print(tot)
