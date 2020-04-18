@@ -20,7 +20,7 @@ def images_in_class(df):
     count = [fish, flower, gravel, sugar]
     ax.bar(labels, count, color=['blue', 'orange', 'green', 'red'])
     plt.title('Number of images per class')
-    fig.savefig('images_in_class.png')
+    fig.savefig('images_in_class.png', bbox_inches='tight')
     return fish, flower, gravel, sugar
 
 def classes_per_image(df):
@@ -33,7 +33,7 @@ def classes_per_image(df):
     ax = fig.add_axes([0,0,1,1])
     ax.hist(count, bins=4, edgecolor='white', linewidth=1)
     plt.title('Number of classes per image')
-    fig.savefig('classes_per_image.png')
+    fig.savefig('classes_per_image.png', bbox_inches='tight')
     return added
     
 def get_binary_mask_sum(encoded_mask):
@@ -57,7 +57,7 @@ def mask_pixel_histogram(df):
     ax.hist([fish,flower,gravel,sugar], bins=30, label=classes)
     ax.legend(prop={'size': 10})
     plt.title('Number of images against number of pixels in mask')
-    fig.savefig('histogram.png')
+    fig.savefig('histogram.png', bbox_inches='tight')
 
     fig, axs = plt.subplots(2, 2, figsize=(15,15))
     axs[0, 0].hist(fish, bins=20)
@@ -68,7 +68,7 @@ def mask_pixel_histogram(df):
     axs[1, 0].set_title('Gravel')
     axs[1, 1].hist(sugar, bins=20, color='red')
     axs[1, 1].set_title('Sugar')
-    fig.savefig('histogram_separate.png')
+    fig.savefig('histogram_separate.png', bbox_inches='tight')
     
     pass   
 
