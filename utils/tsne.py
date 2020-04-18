@@ -6,26 +6,45 @@ from torch.utils import data
 import glob
 from torchvision import transforms
 from PIL import Image
+import pickle
+import matplotlib.pyplot as plt
+from skimage.measure import label, regionprops
+import matplotlib as mpl
 
-def rle2mask(mask_rle, shape=(2100,1400), shrink=1):
-    s = mask_rle.split()
-    starts, lengths = [np.asarray(x, dtype=int) for x in (s[0:][::2], s[1:][::2])]
-    starts -= 1
-    ends = starts + lengths
-    img = np.zeros(shape[0]*shape[1], dtype=np.uint8)
-    for lo, hi in zip(starts, ends):
-        img[lo:hi] = 1
-    return img.reshape(shape).T[::shrink,::shrink]
+def rle_to_mask(rle_string, width = 2100, height = 1400):
+    '''
+    convert RLE(run length encoding) string to numpy array
 
-def rle2bb(rle):
-    if rle=='': return (0,0,0,0)
-    mask = rle2mask(rle)
-    z = np.argwhere(mask==1)
-    mn_x = np.min( z[:,0] )
-    mx_x = np.max( z[:,0] )
-    mn_y = np.min( z[:,1] )
-    mx_y = np.max( z[:,1] )
-    return (mn_x,mn_y,mx_x-mn_x,mx_y-mn_y)
+    Parameters: 
+    rle_string (str): string of rle encoded mask
+    height (int): height of the mask
+    width (int): width of the mask
+
+    Returns: 
+    numpy.array: numpy array of the mask
+    '''
+    
+    rows, cols = height, width
+    
+    if rle_string == -1:
+        return np.zeros((height, width))
+    else:
+        rle_numbers = [int(num_string) for num_string in rle_string.split(' ')]
+        rle_pairs = np.array(rle_numbers).reshape(-1,2)
+        img = np.zeros(rows*cols, dtype= bool)
+        for index, length in rle_pairs:
+            index -= 1
+            img[index:index+length] = 255
+        img = img.reshape(cols,rows)
+        img = img.T
+        return img
+
+def bounding_box(img):
+    rows = np.any(img, axis=1)
+    cols = np.any(img, axis=0)
+    rmin, rmax = np.where(rows)[0][[0, -1]]
+    cmin, cmax = np.where(cols)[0][[0, -1]]
+    return (rmin, cmin, rmax, cmax)
 
 def prep_df(df_filepath, label):
     df = pd.read_csv(df_filepath)
@@ -35,7 +54,7 @@ def prep_df(df_filepath, label):
     df = df.dropna()
     return df
 
-class Dataset(data.Dataset):
+class count_Dataset(data.Dataset):
     def __init__(self, image_filepath, EncodedPixels, size, normalise):
         self.image_filepath = image_filepath
         self.EncodedPixels = EncodedPixels
@@ -47,17 +66,45 @@ class Dataset(data.Dataset):
 
     def __getitem__(self, index):
         ID = self.image_filepath[index]
-        x1, y1, x2, y2 = rle2bb(self.EncodedPixels[index])
+        #x1, y1, x2, y2 = bounding_box(rle_to_mask(self.EncodedPixels[index]))
         img = Image.open(ID)
-        img = img.crop((x1, y1, x2, y2))
-        resize = transforms.Resize(self.size)
-        trans1 = transforms.ToTensor()
-        img = trans1(resize(img))
-        if self.normalise:
-            norma = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-            img = norma(img)
-        return img
+        mask = np.array((rle_to_mask(self.EncodedPixels[index], 2100, 1400) * 1)).T
+        mask = np.where(mask > 0, 1, 0)
+        lbl = label(mask)
+        props = regionprops(lbl)
+        props_list = [prop for prop in props if prop.area > 10000]
+        return len(props_list)
+class IterDataset(data.IterableDataset):
+    def __init__(self, image_filepath, EncodedPixels, size, normalise):
+        self.image_filepath = image_filepath
+        self.EncodedPixels = EncodedPixels
+        self.size = size
+        self.normalise = normalise
 
+    def get_masks(self):
+        for idx in range(len(self.image_filepath)):
+            ID = self.image_filepath[idx]
+            mask = np.array((rle_to_mask(self.EncodedPixels[idx], 2100, 1400) * 1)).T
+            img = Image.open(ID)
+            mask = np.where(mask > 0, 1, 0)
+            lbl = label(mask)
+            props = regionprops(lbl)
+            props_list = [prop for prop in props if prop.area > 60000]
+            iou = sum([prop.area for prop in props_list])/ sum((prop.bbox[2]-prop.bbox[0])*(prop.bbox[3]-prop.bbox[1]) for prop in props_list)
+            if iou < 0.8:
+                continue
+            else:
+                for props in props_list:
+                    img_cropped = img.crop((props.bbox[0], props.bbox[1], props.bbox[2], props.bbox[3]))
+                    trans1 = transforms.ToTensor()
+                    resize = transforms.Resize(self.size)
+                    img_cropped = trans1(resize(img_cropped))
+                    if self.normalise:
+                        norma = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                        img_cropped = norma(img_cropped)
+                    yield img_cropped
+    def __iter__(self):        
+        return self.get_masks()
 
 def get_dataloader(df_filepath, train_image_filepath, img_size, label, normalise, batch_size):
     assert label in ['fish', 'sugar', 'gravel', 'flower'], "Please choose one of the following: 'fish', 'sugar', 'gravel', 'flower'"
@@ -71,10 +118,15 @@ def get_dataloader(df_filepath, train_image_filepath, img_size, label, normalise
     image_filepath_valset = image_filepath[int(len(image_filepath) * 0.8):]
 
     encodedpixels_trainset = encodedpixels[:int(len(encodedpixels) * 0.8)]
-    encodedpixels_valset = encodedpixels[:int(len(encodedpixels) * 0.8)]
+    encodedpixels_valset = encodedpixels[int(len(encodedpixels) * 0.8):]
 
-    train_dl = data.DataLoader(Dataset(image_filepath_trainset, encodedpixels_trainset, img_size, normalise), batch_size=batch_size)
-    val_dl = data.DataLoader(Dataset(image_filepath_valset, encodedpixels_valset, img_size, normalise), batch_size=batch_size)
+    assert len(image_filepath_trainset) == len(encodedpixels_trainset), f"Check length of image_filepath_trainset: {len(image_filepath_trainset)} and encodedpixels_trainset: {len(encodedpixels_trainset)}"
+    assert len(image_filepath_valset) == len(encodedpixels_valset), f"Check length of image_filepath_valset: {len(image_filepath_valset)} and encodedpixels_valset: {len(encodedpixels_valset)}"
+
+    #print([i for idx, i in enumerate(count_Dataset(image_filepath_trainset, encodedpixels_trainset, img_size, normalise))])
+
+    train_dl = data.DataLoader(IterDataset(image_filepath_trainset, encodedpixels_trainset, img_size, normalise), batch_size=batch_size, drop_last = True)
+    val_dl = data.DataLoader(IterDataset(image_filepath_valset, encodedpixels_valset, img_size, normalise), batch_size=batch_size, drop_last = True)
 
     return train_dl, val_dl
 
@@ -82,18 +134,14 @@ if __name__ == "__main__":
     cwd = os.getcwd()
     train_image_filepath = r'C:\Users\Dell\Desktop\CV-Proj\data\train_images'    
     df_filepath = r'C:\Users\Dell\Desktop\CV-Proj\data\train.csv'
-    seed = 2
-    label = 'flower'
+    lab = 'flower'
     img_size = (250, 250)
     normalise = True
-    batch_size = 16
-
-    train_dl, val_dl = get_dataloader(df_filepath, train_image_filepath, img_size, label, normalise, batch_size)
-    print(len(train_dl))
-    print(len(val_dl))
-    for idx, img in enumerate(val_dl):
+    batch_size = 8
+    train_dl, val_dl = get_dataloader(df_filepath, train_image_filepath, img_size, lab, normalise, batch_size)
+    for idx1, img in enumerate(train_dl):
         print(img.shape)
         trans = transforms.ToPILImage()
-        trans1 = transforms.ToTensor()
-        trans(img[0]).show()
+        for i in range(batch_size):
+            trans(img[i]).show()
         break
