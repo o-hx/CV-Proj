@@ -64,6 +64,7 @@ if __name__ == '__main__':
             fig.suptitle(classes)
             for i in range(len(perplexities)):
                 X_embedded = TSNE(n_components=2, perplexity = perplexities[i]).fit_transform(latent)
+                print(f'TSNE built for {classes} intra-class, perplexity: {perplexities[i]}')
                 x = X_embedded[:,0]
                 y = X_embedded[:,1]
                 ax = fig.add_subplot(2, 3, i+1)
@@ -94,6 +95,7 @@ if __name__ == '__main__':
     fig.suptitle('Inter-class t-sne')
     for i in range(len(perplexities)):
         X_embedded = TSNE(n_components=2, perplexity = perplexities[i]).fit_transform(inter_class_img_stack)
+        print(f'TSNE built for inter-class, perplexity: {perplexities[i]}')
         x = X_embedded[:,0]
         y = X_embedded[:,1]
         ax = fig.add_subplot(2, 3, i+1)
