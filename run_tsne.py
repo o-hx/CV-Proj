@@ -80,6 +80,7 @@ if __name__ == '__main__':
                 ax.scatter(x, y, alpha = 0.3)
                 ax.set_title(f'Perplexity: {perplexities[i]}')
             fig.savefig(f'intraclass_{classes}.png')
+            fig2.savefig(f'outliers_{classes}.png')
 
     # Inter-class tsne
     batch_size = int(batch_size/4)
