@@ -76,11 +76,11 @@ if __name__ == '__main__':
                     if counter >= 25:
                         break
                     ax2[counter//5,counter % 5].imshow(img[list(outliers[0])[idx]].permute(1, 2, 0).cpu().detach().numpy())
-                    ax2.set_title(f'Outlier for perplexity {perplexities[i]}')                
                 ax = fig.add_subplot(2, 3, i+1)
                 ax.scatter(x, y, alpha = 0.3)
                 ax.set_title(f'Perplexity: {perplexities[i]}')
             fig.savefig(f'intraclass_{classes}.png')
+            fig2.savefig(f'outliers_{classes}.png')
 
     # Inter-class tsne
     batch_size = int(batch_size/4)
