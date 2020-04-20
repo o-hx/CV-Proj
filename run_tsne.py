@@ -31,7 +31,7 @@ if __name__ == '__main__':
     train_image_filepath = os.path.join(cwd,'data','train_images')
     df_filepath = os.path.join(cwd,'data','train.csv')
     seed = 2
-    batch_size = 2048
+    batch_size = 256
     img_size = (287, 287)
     start_lr = 0.001
     total_epochs = 10
@@ -68,7 +68,7 @@ if __name__ == '__main__':
                 x = X_embedded[:,0]
                 y = X_embedded[:,1]
                 ax = fig.add_subplot(2, 3, i+1)
-                ax.scatter(x, y)
+                ax.scatter(x, y, alpha = 0.3)
                 ax.set_title(f'Perplexity: {perplexities[i]}')
             fig.savefig(f'intraclass_{classes}.png')
 
@@ -85,7 +85,7 @@ if __name__ == '__main__':
                 x, _ = data
                 x = x.to(device)
                 _ = autoencoder.forward(x)
-                latent = autoencoder.latent.detach().cpu().numpy()
+                latent = autoencoder.latent.detach().cpu()
                 inter_class_img.append(latent)
                 col_labels += [col_dict[lab] for i in range(latent.shape[0])]
                 break
@@ -99,6 +99,6 @@ if __name__ == '__main__':
         x = X_embedded[:,0]
         y = X_embedded[:,1]
         ax = fig.add_subplot(2, 3, i+1)
-        ax.scatter(x, y, c = col_labels)
+        ax.scatter(x, y, c = col_labels, alpha = 0.3)
         ax.set_title(f'Perplexity: {perplexities[i]}')
     fig.savefig(f'interclass.png')
