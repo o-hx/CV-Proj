@@ -37,15 +37,6 @@ if __name__ == '__main__':
     total_epochs = 10
     k = 5
     col_dict = {'flower': 'blue', 'fish' : 'green', 'gravel' : 'black', 'sugar' : 'pink'}
-
-    train_dataloader, validation_dataloader = get_dataloader(df_filepath = df_filepath,
-                                                train_image_filepath = train_image_filepath,
-                                                img_size = img_size,
-                                                label = classes[0],
-                                                normalise = True,
-                                                batch_size = batch_size
-                                                )
-
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
     # Intra-class t-sne
@@ -53,6 +44,13 @@ if __name__ == '__main__':
         autoencoder = torch.load(os.path.join(os.getcwd(),'weights',f'{classes}_Autoencodercurrent_model.pth'), map_location = device)
         autoencoder.eval()
         with torch.no_grad():
+            train_dataloader, validation_dataloader = get_dataloader(df_filepath = df_filepath,
+                                                train_image_filepath = train_image_filepath,
+                                                img_size = img_size,
+                                                label = classes,
+                                                normalise = True,
+                                                batch_size = batch_size
+                                                )
             for _, data in enumerate(train_dataloader):
                 x, _ = data
                 x = x.to(device)
