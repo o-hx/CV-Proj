@@ -12,6 +12,8 @@ from utils.misc import upload_google_sheets, get_module_name, log_print
 from utils.tsne import get_dataloader
 from models.autoencoder import Autoencoder
 from models.auxillary import MSE
+import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
 
 if __name__ == '__main__':
     # Set up logging
@@ -29,12 +31,12 @@ if __name__ == '__main__':
     train_image_filepath = os.path.join(cwd,'data','train_images')
     df_filepath = os.path.join(cwd,'data','train.csv')
     seed = 2
-    batch_size = 32
+    batch_size = 2048
     img_size = (287, 287)
     start_lr = 0.001
-    classes = ['flower']
     total_epochs = 10
     k = 5
+    col_dict = {'flower': 'blue', 'fish' : 'green', 'gravel' : 'black', 'sugar' : 'pink'}
 
     train_dataloader, validation_dataloader = get_dataloader(df_filepath = df_filepath,
                                                 train_image_filepath = train_image_filepath,
@@ -45,13 +47,58 @@ if __name__ == '__main__':
                                                 )
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    autoencoder = torch.load(os.path.join(os.getcwd(),'weights',f'{classes[0]}_Autoencodercurrent_model.pth'), map_location = device)
+    
+    # Intra-class t-sne
+    for classes in ['flower', 'fish', 'sugar', 'gravel']:
+        autoencoder = torch.load(os.path.join(os.getcwd(),'weights',f'{classes}_Autoencodercurrent_model.pth'), map_location = device)
+        autoencoder.eval()
+        with torch.no_grad():
+            for _, data in enumerate(train_dataloader):
+                x, _ = data
+                x = x.to(device)
+                _ = autoencoder.forward(x)
+                latent = autoencoder.latent.detach().cpu().numpy()
+                break
+            tsne_output_all_four = []
+            col_labels = []
+            perplexities = np.arange(5, 60, 10)
+            fig = plt.figure(figsize=(10,10), dpi= 100)
+            fig.suptitle(classes)
+            for i in range(len(perplexities)):
+                X_embedded = TSNE(n_components=2, perplexity = perplexities[i]).fit_transform(latent)
+                x = X_embedded[:,0]
+                y = X_embedded[:,1]
+                ax = fig.add_subplot(2, 3, i+1)
+                ax.scatter(x, y)
+                ax.set_title(f'Perplexity: {perplexities[i]}')
+            fig.savefig(f'intraclass_{classes}.png')
 
-    autoencoder.eval()
-    with torch.no_grad():
-        for _, data in enumerate(train_dataloader):
-            x, _ = data
-            x = x.to(device)
-            _ = autoencoder.forward(x)
-
-            latent = autoencoder.latent.shape.detach().cpu().numpy()
+    # Inter-class tsne
+    batch_size = int(batch_size/4)
+    inter_class_img = []
+    col_labels = []
+    col_dict = {'flower': 'blue', 'fish' : 'green', 'gravel' : 'black', 'sugar' : 'pink'}
+    for lab in ['flower', 'fish', 'sugar', 'gravel']:
+        autoencoder = torch.load(os.path.join(os.getcwd(),'weights',f'{classes}_Autoencodercurrent_model.pth'), map_location = device)
+        autoencoder.eval()
+        with torch.no_grad():
+            for _, data in enumerate(train_dataloader):
+                x, _ = data
+                x = x.to(device)
+                _ = autoencoder.forward(x)
+                latent = autoencoder.latent.detach().cpu().numpy()
+                inter_class_img.append(latent)
+                col_labels += [col_dict[lab] for i in range(latent.shape[0])]
+                break
+    inter_class_img_stack = torch.cat(inter_class_img)
+    perplexities = np.arange(5, 60, 10)
+    fig = plt.figure(figsize=(10,10), dpi= 100)
+    fig.suptitle('Inter-class t-sne')
+    for i in range(len(perplexities)):
+        X_embedded = TSNE(n_components=2, perplexity = perplexities[i]).fit_transform(inter_class_img_stack)
+        x = X_embedded[:,0]
+        y = X_embedded[:,1]
+        ax = fig.add_subplot(2, 3, i+1)
+        ax.scatter(x, y, c = col_labels)
+        ax.set_title(f'Perplexity: {perplexities[i]}')
+    fig.savefig(f'interclass.png')
