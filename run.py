@@ -85,7 +85,8 @@ if __name__ == '__main__':
     loss = smp.utils.losses.DiceLoss(beta = loss_args['beta']) + BinaryFocalLoss(gamma = loss_args['gamma']) # + smp.utils.losses.BCELoss() #
     metrics = [
         smp.utils.metrics.IoU(threshold=iou_threshold),
-        smp.utils.metrics.Precision(threshold=iou_threshold)
+        smp.utils.metrics.Precision(threshold=iou_threshold),
+        smp.utils.metrics.Recall(threshold=iou_threshold)
     ]
 
     # Define optimizer
