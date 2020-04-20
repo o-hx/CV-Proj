@@ -105,8 +105,8 @@ def get_dataloader(df_filepath, train_image_filepath, img_size, label, normalise
     assert len(image_filepath_trainset) == len(encodedpixels_trainset), f"Check length of image_filepath_trainset: {len(image_filepath_trainset)} and encodedpixels_trainset: {len(encodedpixels_trainset)}"
     assert len(image_filepath_valset) == len(encodedpixels_valset), f"Check length of image_filepath_valset: {len(image_filepath_valset)} and encodedpixels_valset: {len(encodedpixels_valset)}"
 
-    train_dl = data.DataLoader(IterDataset(image_filepath_trainset, encodedpixels_trainset, img_size, normalise), batch_size=batch_size, drop_last = True, num_workers=12)
-    val_dl = data.DataLoader(IterDataset(image_filepath_valset, encodedpixels_valset, img_size, normalise), batch_size=batch_size, drop_last = True, num_workers=8)
+    train_dl = data.DataLoader(IterDataset(image_filepath_trainset, encodedpixels_trainset, img_size, normalise), batch_size=batch_size, drop_last = True, num_workers=0)
+    val_dl = data.DataLoader(IterDataset(image_filepath_valset, encodedpixels_valset, img_size, normalise), batch_size=batch_size, drop_last = True, num_workers=0)
 
     return train_dl, val_dl
 
