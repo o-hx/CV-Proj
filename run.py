@@ -34,11 +34,11 @@ if __name__ == '__main__':
     start_lr = 0.0005
     classes = ['gravel']
     iou_threshold = 0.5
-    total_epochs = 10
+    total_epochs = 20
     grayscale = False
     drop_empty = True
     loss_args = dict(
-        beta = 0.7,
+        beta = 0.8,
         gamma = 2.
     )
 
@@ -72,9 +72,9 @@ if __name__ == '__main__':
                                                                                 )
 
     # Define Model
-    segmentation_model = Unet('efficientnet-b0', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type='msa')
+    segmentation_model = Unet('efficientnet-b0', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type='scse')
     #segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','densenet169_best_model.pth'))
-    model_save_prefix = ' '.join(classes) + get_module_name(segmentation_model) + '_' + get_module_name(segmentation_model.encoder) + '_'
+    model_save_prefix = 'final_' + ' '.join(classes) + get_module_name(segmentation_model) + '_' + get_module_name(segmentation_model.encoder) + '_'
 
     params = dict(
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
