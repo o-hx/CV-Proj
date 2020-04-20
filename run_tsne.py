@@ -31,7 +31,7 @@ if __name__ == '__main__':
     train_image_filepath = os.path.join(cwd,'data','train_images')
     df_filepath = os.path.join(cwd,'data','train.csv')
     seed = 2
-    batch_size = 2048
+    batch_size = 256
     img_size = (287, 287)
     start_lr = 0.001
     total_epochs = 10
@@ -52,23 +52,33 @@ if __name__ == '__main__':
                                                 batch_size = batch_size
                                                 )
             for _, data in enumerate(train_dataloader):
-                x, _ = data
-                x = x.to(device)
-                _ = autoencoder.forward(x)
+                img, _ = data
+                img = img.to(device)
+                _ = autoencoder.forward(img)
                 latent = autoencoder.latent.detach().cpu().numpy()
                 break
             tsne_output_all_four = []
             col_labels = []
             perplexities = np.arange(5, 60, 10)
             fig = plt.figure(figsize=(10,10), dpi= 100)
+            fig2 = plt.figure(figsize=(10,10))
+            fig2,ax2 = plt.subplots(5,5, figsize = (25,25))
             fig.suptitle(classes)
+            counter = 0
             for i in range(len(perplexities)):
                 X_embedded = TSNE(n_components=2, perplexity = perplexities[i]).fit_transform(latent)
                 print(f'TSNE built for {classes} intra-class, perplexity: {perplexities[i]}')
                 x = X_embedded[:,0]
                 y = X_embedded[:,1]
+                outliers = np.where( (x > np.percentile(x, 99)) | (x < np.percentile(x,1)) | (y > np.percentile(x, 99)) | (y < np.percentile(x,1)) )
+                for idx in range(len(list(outliers[0]))):
+                    counter += 1
+                    if counter >= 25:
+                        break
+                    ax2[counter//5,counter % 5].imshow(img[list(outliers[0])[idx]].permute(1, 2, 0).cpu().detach().numpy())
+                    ax2.set_title(f'Outlier for perplexity {perplexities[i]}')                
                 ax = fig.add_subplot(2, 3, i+1)
-                ax.scatter(x, y)
+                ax.scatter(x, y, alpha = 0.3)
                 ax.set_title(f'Perplexity: {perplexities[i]}')
             fig.savefig(f'intraclass_{classes}.png')
 
@@ -85,7 +95,7 @@ if __name__ == '__main__':
                 x, _ = data
                 x = x.to(device)
                 _ = autoencoder.forward(x)
-                latent = autoencoder.latent.detach().cpu().numpy()
+                latent = autoencoder.latent.detach().cpu()
                 inter_class_img.append(latent)
                 col_labels += [col_dict[lab] for i in range(latent.shape[0])]
                 break
@@ -99,6 +109,6 @@ if __name__ == '__main__':
         x = X_embedded[:,0]
         y = X_embedded[:,1]
         ax = fig.add_subplot(2, 3, i+1)
-        ax.scatter(x, y, c = col_labels)
+        ax.scatter(x, y, c = col_labels, alpha = 0.3)
         ax.set_title(f'Perplexity: {perplexities[i]}')
     fig.savefig(f'interclass.png')
