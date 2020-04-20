@@ -7,7 +7,7 @@ from efficientnet_pytorch import EfficientNet
 
 class Autoencoder(nn.Module):
     '''
-    Define a generic autoencoder that takes in an image, compresses the image into a 1*1000 vector, and then outputs the image from that 1*20 vector
+    Define a generic autoencoder that takes in an image, compresses the image into a 1*1280 vector, and then outputs the image from that 1*20 vector
     For the encoder, we will use efficientnet b0
     There are no attention modules in the Autoencoder
     '''
@@ -32,7 +32,7 @@ class Autoencoder(nn.Module):
             nn.ConvTranspose2d(in_channels=10,out_channels=5,kernel_size=3, stride = 2),
             nn.ReLU(inplace=True),
             nn.BatchNorm2d(5),
-             nn.ConvTranspose2d(in_channels=5,out_channels=3,kernel_size=3, stride = 2),
+            nn.ConvTranspose2d(in_channels=5,out_channels=3,kernel_size=3, stride = 2),
             nn.ReLU(inplace=True),
             nn.BatchNorm2d(3),
         )
