@@ -14,12 +14,6 @@ class PAM_Module(nn.Module):
         super(PAM_Module, self).__init__()
         self.chanel_in = in_dim
 
-        self.encode_decode_1 = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=1, kernel_size=3, dilation = 3),
-            nn.ReLU(),
-            nn.ConvTranspose2d(in_channels=1, out_channels=1, kernel_size=3, dilation = 3)
-        )
-
         self.encode_decode_2 = nn.Sequential(
             nn.Conv2d(in_channels=1, out_channels=1, kernel_size=4, stride = 4),
             nn.ReLU(),
@@ -40,9 +34,8 @@ class PAM_Module(nn.Module):
         m_batchsize, C, height, width = x.size()
 
         pooled_x = torch.mean(x, dim = 1, keepdim=True) # Take the average pooling across the channels
-        query_result = self.encode_decode_1(pooled_x)
         key_result = self.encode_decode_2(pooled_x)
-        weights = self.sigmoid(query_result + key_result)
+        weights = self.sigmoid(key_result)
         
         return x + x*weights
 
@@ -55,10 +48,6 @@ class CAM_Module(nn.Module):
         self.spatial_pool = nn.AdaptiveAvgPool2d(1)
         self.encode_decode = nn.Sequential(
             nn.Conv1d(1, 1, kernel_size=4, stride=4),
-            nn.ReLU(inplace=True),
-            nn.Conv1d(1, 1, kernel_size=2, stride=2),
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose1d(1, 1, kernel_size=2, stride=2),
             nn.ReLU(inplace=True),
             nn.ConvTranspose1d(1, 1, kernel_size=4, stride=4),
             nn.Sigmoid()
