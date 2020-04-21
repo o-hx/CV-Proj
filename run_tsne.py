@@ -67,7 +67,6 @@ if __name__ == '__main__':
                 col_labels = []
                 perplexities = np.arange(5, 60, 10)
                 fig = plt.figure(figsize=(10,10), dpi= 100)
-                fig2 = plt.figure(figsize=(10,10))
                 fig2,ax2 = plt.subplots(5,5, figsize = (25,25))
                 fig.suptitle(classes)
                 counter = 0
@@ -126,14 +125,25 @@ if __name__ == '__main__':
         inter_class_img_stack = torch.cat(inter_class_img)
         perplexities = np.arange(5, 60, 10)
         fig = plt.figure(figsize=(10,10), dpi= 100)
+        fig2,ax2 = plt.subplots(5,5, figsize = (25,25))
         fig.suptitle('Inter-class t-sne')
+        fig2.suptitle('Outliers')
+        counter = 0
         for i in range(len(perplexities)):
             X_embedded = TSNE(n_components=2, perplexity = perplexities[i]).fit_transform(inter_class_img_stack)
             print(f'TSNE built for inter-class, perplexity: {perplexities[i]}')
             x = X_embedded[:,0]
             y = X_embedded[:,1]
+            outliers = np.where( ((x > np.percentile(x, 99)) | (y > np.percentile(x, 99))) | ((x < np.percentile(x,1)) | (y < np.percentile(x,1))) )
+            for idx in range(len(list(outliers[0]))):
+                if counter >= 25:
+                    break
+                ax2[counter//5,counter % 5].imshow(orig_img[list(outliers[0])[idx]].permute(1, 2, 0).cpu().detach().numpy())
+                ax2[counter//5,counter % 5].set_title(f'Perplexity: {perplexities[i]}')
+                counter += 1
             ax = fig.add_subplot(2, 3, i+1)
             ax.scatter(x, y, c = col_labels, alpha = 0.3)
             ax.set_title(f'Perplexity: {perplexities[i]}')
         fig.legend(handles=[mpatches.Patch(color=col_dict[key], label=key, alpha = 0.3) for key in col_dict.keys()])
         fig.savefig(f'graphs/interclass_tsne_classifier.png')
+        fig2.savefig(f'graphs/interclass_outliers.png')
