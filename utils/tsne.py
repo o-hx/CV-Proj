@@ -84,7 +84,8 @@ class IterDataset(data.IterableDataset):
                     if self.normalise:
                         norma = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
                         img_cropped = norma(img_cropped)
-                    yield img_cropped, img_cropped
+                    orig_img = trans1(resize(img))    
+                    yield img_cropped, img_cropped, orig_img
     def __iter__(self):        
         return self.get_masks()
 

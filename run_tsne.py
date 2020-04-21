@@ -52,7 +52,7 @@ if __name__ == '__main__':
                                                 batch_size = batch_size
                                                 )
             for _, data in enumerate(train_dataloader):
-                img, _ = data
+                img, _, orig_img = data
                 img = img.to(device)
                 _ = autoencoder.forward(img)
                 latent = autoencoder.latent.detach().cpu().numpy()
@@ -75,7 +75,7 @@ if __name__ == '__main__':
                     counter += 1
                     if counter >= 25:
                         break
-                    ax2[counter//5,counter % 5].imshow(img[list(outliers[0])[idx]].permute(1, 2, 0).cpu().detach().numpy())
+                    ax2[counter//5,counter % 5].imshow(orig_img[list(outliers[0])[idx]].permute(1, 2, 0).cpu().detach().numpy())
                 ax = fig.add_subplot(2, 3, i+1)
                 ax.scatter(x, y, alpha = 0.3)
                 ax.set_title(f'Perplexity: {perplexities[i]}')
