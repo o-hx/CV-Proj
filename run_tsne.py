@@ -92,6 +92,7 @@ if __name__ == '__main__':
         batch_size = int(batch_size/4)
         inter_class_img = []
         col_labels = []
+        inter_class_orig_img = []
         col_dict = {'flower': 'blue', 'fish' : 'green', 'gravel' : 'black', 'sugar' : 'pink'}
         
         classifier = torch.load(os.path.join(os.getcwd(),'weights','flower_gravel_sugar_fishclassifier_EfficientNetbest_model.pth'), map_location = device)
@@ -120,9 +121,11 @@ if __name__ == '__main__':
                     output = classifier(x).detach().cpu()
                     features = torch.from_numpy(features[-1])
                     inter_class_img.append(features)
+                    inter_class_orig_img.append(orig_img)
                     col_labels += [col_dict[classes] for i in range(output.shape[0])]
                     break
         inter_class_img_stack = torch.cat(inter_class_img)
+        orig_img_stack = torch.cat(inter_class_orig_img)
         perplexities = np.arange(5, 60, 10)
         fig = plt.figure(figsize=(10,10), dpi= 100)
         fig2,ax2 = plt.subplots(5,5, figsize = (25,25))
@@ -138,7 +141,7 @@ if __name__ == '__main__':
             for idx in range(len(list(outliers[0]))):
                 if counter >= 25:
                     break
-                ax2[counter//5,counter % 5].imshow(orig_img[list(outliers[0])[idx]].permute(1, 2, 0).cpu().detach().numpy())
+                ax2[counter//5,counter % 5].imshow(orig_img_stack[list(outliers[0])[idx]].permute(1, 2, 0).cpu().detach().numpy())
                 ax2[counter//5,counter % 5].set_title(f'Perplexity: {perplexities[i]}')
                 counter += 1
             ax = fig.add_subplot(2, 3, i+1)
