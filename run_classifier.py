@@ -61,7 +61,7 @@ if __name__ == '__main__':
     #classification_model.classifier = torch.nn.Sequential(torch.nn.Linear(in_features = 1664, out_features = len(classes), bias = True), torch.nn.Sigmoid())
     
     classification_model = EfficientNet.from_pretrained('efficientnet-b0')
-    classification_model._fc = nn.Sequential(nn.Linear(in_features = 1280, out_features = len(classes), bias = True), torch.nn.Sigmoid())
+    classification_model._fc = torch.nn.Sequential(nn.Linear(in_features = 1280, out_features = len(classes), bias = True), torch.nn.Sigmoid())
     
     model_save_prefix = '_'.join(classes) + 'classifier_' + get_module_name(classification_model)
 
