@@ -125,7 +125,6 @@ if __name__ == '__main__':
                     col_labels += [col_dict[classes] for i in range(output.shape[0])]
                     break
         inter_class_img_stack = torch.cat(inter_class_img)
-        orig_img_stack = torch.cat(inter_class_orig_img)
         perplexities = np.arange(5, 60, 10)
         fig = plt.figure(figsize=(10,10), dpi= 100)
         fig2,ax2 = plt.subplots(5,5, figsize = (25,25))
@@ -141,7 +140,8 @@ if __name__ == '__main__':
             for idx in range(len(list(outliers[0]))):
                 if counter >= 25:
                     break
-                ax2[counter//5,counter % 5].imshow(orig_img_stack[list(outliers[0])[idx]].permute(1, 2, 0).cpu().detach().numpy())
+                index = list(outliers[0])[idx]
+                ax2[counter//5,counter % 5].imshow(inter_class_orig_img[index//batch_size][index % batch_size].permute(1, 2, 0).cpu().detach().numpy())
                 ax2[counter//5,counter % 5].set_title(f'Perplexity: {perplexities[i]}')
                 counter += 1
             ax = fig.add_subplot(2, 3, i+1)
