@@ -6,6 +6,7 @@ import time
 import segmentation_models_pytorch as smp
 import torchvision
 
+from efficientnet_pytorch import EfficientNet
 from utils.data_classifier import prep_classification_data, get_augmentations
 from utils.train import train_model
 from utils.misc import upload_google_sheets, get_module_name, log_print
@@ -56,8 +57,12 @@ if __name__ == '__main__':
     )
 
     # Define Model
-    classification_model = torchvision.models.densenet169(pretrained=True)
-    classification_model.classifier = torch.nn.Sequential(torch.nn.Linear(in_features = 1664, out_features = len(classes), bias = True), torch.nn.Sigmoid())
+    #classification_model = torchvision.models.densenet169(pretrained=True)
+    #classification_model.classifier = torch.nn.Sequential(torch.nn.Linear(in_features = 1664, out_features = len(classes), bias = True), torch.nn.Sigmoid())
+    
+    classification_model = EfficientNet.from_pretrained('efficientnet-b0')
+    classification_model._fc = nn.Sequential(nn.Linear(in_features = 1280, out_features = len(classes), bias = True), torch.nn.Sigmoid())
+    
     model_save_prefix = '_'.join(classes) + 'classifier_' + get_module_name(classification_model)
 
     params = dict(
