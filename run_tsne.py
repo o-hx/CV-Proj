@@ -70,7 +70,7 @@ if __name__ == '__main__':
                 print(f'TSNE built for {classes} intra-class, perplexity: {perplexities[i]}')
                 x = X_embedded[:,0]
                 y = X_embedded[:,1]
-                outliers = np.where( (x > np.percentile(x, 99)) | (x < np.percentile(x,1)) | (y > np.percentile(x, 99)) | (y < np.percentile(x,1)) )
+                outliers = np.where( ((x > np.percentile(x, 99)) & (y > np.percentile(x, 99))) | ((x < np.percentile(x,1))  & (y < np.percentile(x,1))) )
                 print(outliers)
                 for idx in range(len(list(outliers[0]))):
                     if counter >= 25:
