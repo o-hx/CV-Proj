@@ -15,6 +15,7 @@ from models.autoencoder import Autoencoder
 from models.auxillary import MSE
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
+import matplotlib.patches as mpatches
 
 if __name__ == '__main__':
     # Set up logging
@@ -76,7 +77,6 @@ if __name__ == '__main__':
                     x = X_embedded[:,0]
                     y = X_embedded[:,1]
                     outliers = np.where( ((x > np.percentile(x, 99)) & (y > np.percentile(x, 99))) | ((x < np.percentile(x,1))  & (y < np.percentile(x,1))) )
-                    print(outliers)
                     for idx in range(len(list(outliers[0]))):
                         if counter >= 25:
                             break
@@ -135,4 +135,5 @@ if __name__ == '__main__':
             ax = fig.add_subplot(2, 3, i+1)
             ax.scatter(x, y, c = col_labels, alpha = 0.3)
             ax.set_title(f'Perplexity: {perplexities[i]}')
-        fig.savefig(f'interclass.png')
+        fig.legend(handles=[mpatches.Patch(color=col_dict[key], label=key, alpha = 0.3) for key in col_dict.keys()])
+        fig.savefig(f'graphs/interclass_tsne_classifier.png')
