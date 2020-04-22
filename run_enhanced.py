@@ -7,7 +7,7 @@ import segmentation_models_pytorch as smp
 import torchvision
 
 from utils.data import prepare_dataloader, get_augmentations
-from utils.train import train_model
+from utils.train_modified import train_model
 from utils.misc import upload_google_sheets, get_module_name, log_print
 from models.auxillary import BinaryFocalLoss
 from models.unet import Unet
@@ -80,6 +80,7 @@ if __name__ == '__main__':
                                         gravel_path = os.path.join(os.getcwd(),'weights','final_gravelUnet_EfficientNetEncoder_current_model.pth'))
 
     model_save_prefix = 'cloud_segmentator'
+    # segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','baseline.pth'))
 
     params = dict(
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
@@ -87,7 +88,7 @@ if __name__ == '__main__':
     )
 
     # Define Loss and Accuracy Metric
-    loss = smp.utils.losses.DiceLoss() + BinaryFocalLoss(gamma = loss_args['gamma'])
+    loss = [smp.utils.losses.DiceLoss(beta = loss_args['beta']) + BinaryFocalLoss(gamma = loss_args['gamma']),BinaryFocalLoss(gamma = loss_args['gamma'])]
     metrics = [
         smp.utils.metrics.IoU(threshold=iou_threshold),
         smp.utils.metrics.Precision(threshold=iou_threshold),
@@ -112,7 +113,7 @@ if __name__ == '__main__':
                                                             classes = classes,
                                                             logger = logging,
                                                             verbose = True,
-                                                            # only_validation= True,
+                                                            # only_validation = True,
                                                             model_save_path = os.path.join(os.getcwd(),'weights'),
                                                             model_save_prefix = model_save_prefix,
                                                             plots_save_path = os.path.join(os.getcwd(),'plots')

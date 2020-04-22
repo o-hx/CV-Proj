@@ -141,7 +141,8 @@ class Dataset(data.Dataset):
                     raise ValueError("Make sure all labels belong to 'fish', 'flower', 'gravel' or 'sugar'")
             masks_to_include = [masks[self.list_of_classes.index(lab), :,:] for lab in self.label]
             masks = torch.squeeze(torch.stack(masks_to_include), 1)
-            return X, masks
+            labels = (masks.sum(2).sum(1) > 0).type(torch.float32)
+            return X, masks, labels
 
 def histogram_equalize(filepath, equalise = False, grayscale = False):
     if grayscale:
