@@ -619,7 +619,7 @@ def test_model(test_dataloader,
     
     log_print('Saving predictions...', logger)
     np.save(os.path.join(predictions_save_path,str(time.ctime()).replace(':','').replace('  ',' ').replace(' ','_')), all_outputs.cpu().numpy() )
-    return all_outputs.cpu().numpy()
+    return all_outputs.cpu().numpy(), filepath
 
 def validate_and_plot(validation_dataloader,
                     validation_dataloader_org,

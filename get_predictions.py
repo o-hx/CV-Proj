@@ -88,12 +88,16 @@ if __name__ == '__main__':
     # Define Model
     segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','Unet_EfficientNetEncoder_best_model.pth'))
     
-    all_outputs = test_model(test_dataloader,
+    all_outputs, filepaths = test_model(test_dataloader,
                 segmentation_model,
                 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
                 logger = None,
                 verbose = True,
                 predictions_save_path = os.path.join(os.getcwd(),'predictions'),
                 )
+
+    print(all_outputs.shape)
+    print(filepaths)
+    print(type(filepaths))
 
     
