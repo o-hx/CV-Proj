@@ -5,10 +5,13 @@ import os
 import time
 import segmentation_models_pytorch as smp
 import torchvision
+import seaborn as sns
 
 from utils.data import prepare_dataloader
 from utils.train import plot_roc_iou
 from utils.misc import log_print
+
+sns.set()
 
 if __name__ == '__main__':
     # Set up logging
@@ -28,9 +31,9 @@ if __name__ == '__main__':
     seed = 2
     batch_size = 3
     img_size = (int(4*64), int(6*64))
-    classes = ['gravel']
+    classes = ['flower']
     iou_threshold = 0.5
-    grayscale = True
+    grayscale = False
     drop_empty = True
 
     mask_transform = torchvision.transforms.Compose([torchvision.transforms.Resize(img_size),
@@ -64,10 +67,10 @@ if __name__ == '__main__':
                                                                         )
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','gravelUnet_EfficientNetEncoder_best_model.pth'), map_location = device)
+    segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','final_flowerUnet_EfficientNetEncoder_current_model.pth'), map_location = device)
     
-    plot_roc_iou(dataloader_list = [valid_dl_no_empty, validation_dataloader],
-                dataloader_name_list = ['Val DL No Empty', 'Full Validation Set'],
+    plot_roc_iou(dataloader_list = [validation_dataloader],
+                dataloader_name_list = ['Full Validation Set'],
                 model = segmentation_model,
                 classes = classes,
                 batch_samples = 2,

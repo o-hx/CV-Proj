@@ -29,10 +29,10 @@ if __name__ == '__main__':
     test_image_filepath = os.path.join(cwd,'data','test_images')
     df_filepath = os.path.join(cwd,'data','train.csv')
     seed = 2
-    batch_size = 8
+    batch_size = 16
     img_size = (int(4*64), int(6*64))
     start_lr = 0.0005
-    classes = ['gravel']
+    classes = ['fish']
     iou_threshold = 0.5
     total_epochs = 20
     grayscale = False

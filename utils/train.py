@@ -361,6 +361,7 @@ def train_model(train_dataloader,
                 classes = ['sugar','flower','fish','gravel'],
                 logger = None,
                 verbose = True,
+                only_validation = False,
                 model_save_path = os.path.join(os.getcwd(),'weights'),
                 model_save_prefix = '',
                 plots_save_path = os.path.join(os.getcwd(),'plots')
@@ -412,11 +413,12 @@ def train_model(train_dataloader,
     for epoch in range(num_epochs):
         log_print(f'\nEpoch: {epoch}', logger)
 
-        train_logs, train_cm = train_epoch.run(train_dataloader)
-        losses['train'].append(train_logs['loss'])
-        confusion_matrices['train'].append(train_cm)
-        for metric in metric_names:
-            metric_values['train'][metric].append(train_logs[metric])
+        if not only_validation:
+            train_logs, train_cm = train_epoch.run(train_dataloader)
+            losses['train'].append(train_logs['loss'])
+            confusion_matrices['train'].append(train_cm)
+            for metric in metric_names:
+                metric_values['train'][metric].append(train_logs[metric])
 
         valid_logs = {}
         for valid_idx, validation_dataloader in enumerate(validation_dataloader_list):

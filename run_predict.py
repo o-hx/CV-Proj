@@ -28,9 +28,9 @@ if __name__ == '__main__':
     seed = 2
     batch_size = 1
     img_size = (int(4*64), int(6*64))
-    classes = ['fish']
+    classes = ['sugar','flower','fish','gravel']
     iou_threshold = 0.5
-    grayscale = True
+    grayscale = False
     drop_empty = True
 
     mask_transform = torchvision.transforms.Compose([torchvision.transforms.Resize(img_size),
@@ -84,15 +84,16 @@ if __name__ == '__main__':
                                                                                 drop_empty = drop_empty
                                                                                 )
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','fishUnet_EfficientNetEncoder_current_model.pth'), map_location = device)
+    segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','baseline.pth'), map_location = device)
 
     metrics = [
         smp.utils.metrics.IoU(threshold=iou_threshold),
-        smp.utils.metrics.Precision(threshold=iou_threshold)
+        smp.utils.metrics.Precision(threshold=iou_threshold),
+        smp.utils.metrics.Recall(threshold=iou_threshold)
     ]
     
-    validate_and_plot(validation_dataloader = valid_dl_no_empty,
-                        validation_dataloader_org = validation_dataloader_no_empty_org,
+    validate_and_plot(validation_dataloader = validation_dataloader,
+                        validation_dataloader_org = validation_dataloader_org,
                         model = segmentation_model,
                         metrics = metrics,
                         classes = classes,
