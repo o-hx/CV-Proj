@@ -604,16 +604,18 @@ def test_model(test_dataloader,
     if torch.cuda.is_available():
         model.cuda()
 
-    all_outputs = torch.tensor([], device=device)
+    all_outputs = []
 
     with torch.no_grad():
         for _, data in enumerate(test_dataloader):
-            inputs = data[0].to(device)
+            inputs = data.to(device)
             outputs = model(inputs)
-            all_outputs = torch.cat((all_outputs, outputs), 0)
-    
+            all_outputs.append(outputs)
+        all_outputs = torch.cat(all_outputs)
+    print(all_outputs.shape)
     log_print('Saving predictions...', logger)
     np.save(os.path.join(predictions_save_path,str(time.ctime()).replace(':','').replace('  ',' ').replace(' ','_')), all_outputs)
+    return os.path.join(predictions_save_path,str(time.ctime()).replace(':','').replace('  ',' ').replace(' ','_'))
 
 def validate_and_plot(validation_dataloader,
                     validation_dataloader_org,
