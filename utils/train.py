@@ -612,7 +612,7 @@ def test_model(test_dataloader,
     with torch.no_grad():
         for _, data in enumerate(test_dataloader):
             inputs = data[0].to(device)
-            filepath.append(data[1])
+            filepath += [os.path.basename(i) for i in data[1]]
             outputs = model(inputs)
             all_outputs.append(outputs)
         all_outputs = torch.cat(all_outputs)

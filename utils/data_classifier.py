@@ -98,8 +98,7 @@ def split_data(df_filepath, seed, train_proportion = 0.9):
     test_proportion = (1 - train_proportion)/2
 
     train_set = list_of_images[:int(len(list_of_images) * train_proportion)]
-    valid_set = list_of_images[int(len(list_of_images) * train_proportion):int(len(list_of_images) * (train_proportion + test_proportion))]
-    test_set = list_of_images[int(len(list_of_images) * (train_proportion + test_proportion)):]
+    valid_set = list_of_images[int(len(list_of_images) * train_proportion):]
 
     train_dict = {}
     for img in train_set:
@@ -108,14 +107,11 @@ def split_data(df_filepath, seed, train_proportion = 0.9):
     valid_dict = {}
     for val_img in valid_set:
         valid_dict[val_img] = df[df['image'] == val_img]['EncodedPixels'].tolist() 
-
-    test_dict = {}
-    for val_img in test_set:
-        test_dict[val_img] = df[df['image'] == val_img]['EncodedPixels'].tolist() 
-    return train_dict, valid_dict, test_dict, classes
+ 
+    return train_dict, valid_dict, classes
 
 class classification_Dataset(data.Dataset):
-    def __init__(self, train_image_filepath, image_filepath, image_labels, size, transforms = None, data_augmentation = None, equalise = True, list_of_classes = None):
+    def __init__(self, train_image_filepath, image_filepath, image_labels, size, transforms = None, data_augmentation = None, equalise = True, list_of_classes = None, test = False):
         self.train_image_filepath = train_image_filepath
         self.image_filepath = image_filepath
         self.image_labels = image_labels
@@ -124,6 +120,7 @@ class classification_Dataset(data.Dataset):
         self.equalise = equalise
         self.list_of_classes = list_of_classes
         self.data_augmentation = data_augmentation
+        self.test = test
 
     def __len__(self):
         return len(self.image_filepath)
@@ -138,16 +135,20 @@ class classification_Dataset(data.Dataset):
         if self.transforms is not None:
             X = Image.fromarray(X)
             X = self.transforms(X)
-        label = torch.FloatTensor(self.image_labels[ID.replace(self.train_image_filepath + '/', '')])
-        if self.list_of_classes is not None:
-            labels = []
-            for clas in self.list_of_classes:
-                idx = ['fish', 'flower', 'gravel', 'sugar'].index(clas)
-                labels.append(label[idx])
-            label = torch.stack(labels)
-        return X, label
+        if self.test:
+            return X, os.path.basename(ID)
+        else:
+            label = torch.FloatTensor(self.image_labels[ID.replace(self.train_image_filepath + '/', '')])
+            if self.list_of_classes is not None:
+                labels = []
+                for clas in self.list_of_classes:
+                    idx = ['fish', 'flower', 'gravel', 'sugar'].index(clas)
+                    labels.append(label[idx])
+                label = torch.stack(labels)
+            return X, label
 
 def prep_classification_data(train_image_filepath,
+                             test_image_filepath,
                              df_filepath, 
                              seed,
                              size, 
@@ -159,7 +160,7 @@ def prep_classification_data(train_image_filepath,
                              list_of_classes = ['sugar','flower','fish','gravel']):
 
     # Get dictionary of {image: labels}
-    train_dict, valid_dict, test_dict, classes = split_data(df_filepath, seed, train_proportion = train_proportion)
+    train_dict, valid_dict, classes = split_data(df_filepath, seed, train_proportion = train_proportion)
 
     num_samples = np.sum(np.array(list(train_dict.values())), axis = 0)
     num_samples_class = []
@@ -171,12 +172,12 @@ def prep_classification_data(train_image_filepath,
     # Create list of image filepaths
     train_fp = [train_image_filepath + '/' + img for img in train_dict.keys()]
     valid_fp = [train_image_filepath + '/' + img for img in valid_dict.keys()]
-    test_fp = [train_image_filepath + '/' + img for img in test_dict.keys()]
+    test_fp = [test_image_filepath + '/' + img for img in os.listdir(test_image_filepath)][:3]
 
     # Initialise classification dataset class 
     train_ds = classification_Dataset(train_image_filepath, train_fp, train_dict, size = size, transforms = transforms, data_augmentation = data_augmentation, equalise = equalise, list_of_classes = list_of_classes)
     valid_ds = classification_Dataset(train_image_filepath, valid_fp, valid_dict, size = size, transforms = transforms, data_augmentation = None, equalise = equalise, list_of_classes = list_of_classes)
-    test_ds = classification_Dataset(train_image_filepath, test_fp, test_dict, size = size, transforms = transforms, data_augmentation = None, equalise = equalise, list_of_classes = list_of_classes)
+    test_ds = classification_Dataset(test_image_filepath, test_fp, None, size = size, transforms = transforms, data_augmentation = None, equalise = equalise, list_of_classes = list_of_classes, test = True)
     
     # Initialise dataloader
     train_dl = data.DataLoader(train_ds, batch_size = batch_size, num_workers=batch_size)
@@ -186,9 +187,9 @@ def prep_classification_data(train_image_filepath,
     return train_dl, valid_dl, test_dl, num_samples_class
 
 if __name__ == "__main__":
-
     cwd = os.getcwd()
     train_image_filepath = f'{cwd}/data/train_images'
+    test_image_filepath = f'{cwd}/data/test_images'
     df_filepath = f'{cwd}/data/train.csv'
     seed = 3
     img_size = (6*64, 9*64)
@@ -202,6 +203,7 @@ if __name__ == "__main__":
                                                 torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
     train_dl, valid_dl, test_dl, num_samples_class = prep_classification_data(train_image_filepath = train_image_filepath,
+                                                           test_image_filepath = test_image_filepath,
                                                            df_filepath = df_filepath, 
                                                            seed = seed, 
                                                            train_proportion = train_proportion, 
