@@ -120,7 +120,7 @@ class Dataset(data.Dataset):
         if self.test and self.transforms is not None:
             X = Image.fromarray(X)
             X = self.transforms(X)
-            return X
+            return X, ID
         else:
             masks = self.EncodedPixels[index]
             masks = np.array([(rle_to_mask(i, 2100, 1400) * 1).astype(float) for i in masks])
@@ -221,7 +221,7 @@ def prepare_dataloader(train_image_filepath,
         valid_images_no_empty, valid_masks_no_empty = group_data(valid_df_no_empty, train_image_filepath)
     else:
         valid_images_no_empty, valid_masks_no_empty = None, None
-    test_images = [test_image_filepath + '/' + i for i in os.listdir(test_image_filepath)]
+    test_images = [test_image_filepath + '/' + i for i in os.listdir(test_image_filepath)][:100]
 
     train_ds = Dataset(train_images_no_empty, train_masks_no_empty, size = size, test = False, transforms = train_transform, mask_transform = mask_transform, label = label, data_augmentations = data_augmentations, grayscale = grayscale, equalise = equalise)
     valid_ds = Dataset(valid_images, valid_masks, size = size, test = False, transforms = test_transform, mask_transform = mask_transform, label = label, grayscale = grayscale, equalise = equalise)
