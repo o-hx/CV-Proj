@@ -172,7 +172,7 @@ def prep_classification_data(train_image_filepath,
     # Create list of image filepaths
     train_fp = [train_image_filepath + '/' + img for img in train_dict.keys()]
     valid_fp = [train_image_filepath + '/' + img for img in valid_dict.keys()]
-    test_fp = [test_image_filepath + '/' + img for img in os.listdir(test_image_filepath)][:3]
+    test_fp = [test_image_filepath + '/' + img for img in os.listdir(test_image_filepath)]
 
     # Initialise classification dataset class 
     train_ds = classification_Dataset(train_image_filepath, train_fp, train_dict, size = size, transforms = transforms, data_augmentation = data_augmentation, equalise = equalise, list_of_classes = list_of_classes)

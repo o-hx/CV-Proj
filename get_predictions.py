@@ -1,3 +1,5 @@
+%%time
+
 import torch
 import numpy as np
 import logging
@@ -5,6 +7,7 @@ import os
 import time
 import segmentation_models_pytorch as smp
 import torchvision
+import pandas as pd
 
 from utils.data import prepare_dataloader, get_augmentations
 from utils.train import test_model
@@ -47,8 +50,10 @@ if __name__ == '__main__':
     df_filepath = os.path.join(cwd,'data','train.csv')
     batch_size = 1
     seed = 2
-    classification_img_size = (1400, 2100)
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    classification_img_size = (10*64, 15*64)
+    actual_img_size = (1400, 2100)
+    device = torch.device("cpu")
+    #device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     classification_model = os.path.join(os.getcwd(),'weights','classifier.pth')
     segmentation_model_fish  = os.path.join(os.getcwd(),'weights','final_fishUnet_EfficientNetEncoder_current_model.pth')
@@ -63,8 +68,8 @@ if __name__ == '__main__':
         gravel_path = segmentation_model_gravel,
         classifier_class_order = ['flower', 'gravel', 'sugar', 'fish'],
         classifier_threshold = 0.5,
-        dataloader_class_order = ['sugar','flower','fish','gravel'],
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"))
+        dataloader_class_order = ['fish','flower','gravel','sugar'],
+        device = device)
 
     transforms = torchvision.transforms.Compose([torchvision.transforms.Resize(classification_img_size),
                                                 torchvision.transforms.ToTensor(),
@@ -79,11 +84,15 @@ if __name__ == '__main__':
                                                            transforms = transforms,
                                                            data_augmentation = None,
                                                            batch_size = batch_size)
+
+    upsample_transform = torchvision.transforms.Compose([torchvision.transforms.ToPILImage(), 
+                                                         torchvision.transforms.Resize(actual_img_size),
+                                                         torchvision.transforms.ToTensor()])
     
     if not os.path.exists('predictions'):
         os.mkdir('predictions')
-    if torch.cuda.is_available():
-        model.cuda()
+    # if torch.cuda.is_available():
+    #     model.cuda()
 
     all_outputs = []
     prediction_filepath = []
@@ -91,9 +100,16 @@ if __name__ == '__main__':
     with torch.no_grad():
         for _, data in enumerate(classifier_test_dl):
             inputs = data[0].to(device)
-            prediction_filepath += [i for i in data[1]]
+            for fp in data[1]:
+                for lab  in ['fish','flower','gravel','sugar']:
+                    prediction_filepath += [fp + '_' + lab.capitalize()]
             outputs = model(inputs)
-            all_outputs.append(outputs.cpu().detach().numpy())
-        all_outputs = np.concatenate(all_outputs, axis = 0)
-    
-    print(all_outputs.shape)
+            masks, labels = outputs
+            for batch in masks:
+                for clas in batch:
+                    clas = upsample_transform(clas).cpu().detach().numpy()
+                    all_outputs.append(mask2rle(clas.squeeze()))
+
+    submission_dict = {'Image_Label': prediction_filepath, 'EncodedPixels': all_outputs}
+    submission = pd.DataFrame.from_dict(submission_dict)
+    submission.to_csv('submission.csv', index=False)
