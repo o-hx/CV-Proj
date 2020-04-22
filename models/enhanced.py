@@ -25,28 +25,13 @@ class CloudSegment(nn.Module):
         self.classifier_threshold = classifier_threshold
         self.dataloader_class_order = dataloader_class_order
 
-        # for p in self.classifier.parameters():
-        #     p.requires_grad = False
-
         self.sugar_seg = torch.load(sugar_path, map_location = device)
-
-        # for p in self.sugar_seg.parameters():
-        #     p.requires_grad = False
 
         self.flower_seg = torch.load(flower_path, map_location = device)
 
-        # for p in self.flower_seg.parameters():
-        #     p.requires_grad = False
-
         self.fish_seg = torch.load(fish_path, map_location = device)
 
-        # for p in self.fish_seg.parameters():
-        #     p.requires_grad = False
-
         self.gravel_seg = torch.load(gravel_path, map_location = device)
-
-        # for p in self.gravel_seg.parameters():
-        #     p.requires_grad = False
 
     def forward(self, x):
         # X is an image
@@ -73,10 +58,10 @@ class CloudSegment(nn.Module):
         for clas in ['sugar','flower','fish','gravel']:
             classifier2dl_classidx[self.classifier_class_order.index(clas)] = self.dataloader_class_order.index(clas)
             
-
+        final_predicted_masks = torch.tensor(predicted_masks).clone().detach()
         for x_idx in range(class_preds.shape[0]):
             for class_idx in range(class_preds.shape[1]):
-                predicted_masks[x_idx, classifier2dl_classidx[class_idx]] = predicted_masks[x_idx, classifier2dl_classidx[class_idx]]*class_preds[x_idx, class_idx]
+                final_predicted_masks[x_idx, classifier2dl_classidx[class_idx]] = predicted_masks[x_idx, classifier2dl_classidx[class_idx]]*class_preds[x_idx, class_idx]
 
-        return predicted_masks
+        return final_predicted_masks
 

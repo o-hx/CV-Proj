@@ -87,7 +87,7 @@ if __name__ == '__main__':
     )
 
     # Define Loss and Accuracy Metric
-    loss = smp.utils.losses.DiceLoss() #+ BinaryFocalLoss(gamma = loss_args['gamma'])
+    loss = smp.utils.losses.DiceLoss() + BinaryFocalLoss(gamma = loss_args['gamma'])
     metrics = [
         smp.utils.metrics.IoU(threshold=iou_threshold),
         smp.utils.metrics.Precision(threshold=iou_threshold),
@@ -112,6 +112,7 @@ if __name__ == '__main__':
                                                             classes = classes,
                                                             logger = logging,
                                                             verbose = True,
+                                                            # only_validation= True,
                                                             model_save_path = os.path.join(os.getcwd(),'weights'),
                                                             model_save_prefix = model_save_prefix,
                                                             plots_save_path = os.path.join(os.getcwd(),'plots')
