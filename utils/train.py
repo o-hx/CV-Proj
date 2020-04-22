@@ -300,7 +300,10 @@ def plot_roc_iou(dataloader_list,
         for clas in range(len(classes)):
             temp_ls = []
             for threshold in threshold_intervals:
-                temp_ls.append(IoU(threshold=threshold)(y_pred[dataloader_idx][:,clas,:,:], y[dataloader_idx][:,clas,:,:]).item())
+                iou = IoU(threshold=threshold)
+                value = iou(y_pred[dataloader_idx][:,clas,:,:], y[dataloader_idx][:,clas,:,:]).item()
+                # print(clas, threshold, value)
+                temp_ls.append(value)
             iou_scores_dl.append(temp_ls)
         iou_scores.append(iou_scores_dl)
 
@@ -330,7 +333,7 @@ def plot_roc_iou(dataloader_list,
         ax.legend()
         ax.set_title(f'IOU Plot for {dl_name}', fontsize=12)
 
-    fig, ax = plt.subplots(2,len(dataloader_list), figsize=(14, 5*len(dataloader_list)))
+    fig, ax = plt.subplots(2,len(dataloader_list), figsize=(7*len(dataloader_list), 10))
     for dl_idx, dl in enumerate(dataloader_list):
         if len(dataloader_list) == 1:
             create_roc_plot(y_pred[dl_idx].numpy(), y[dl_idx].numpy(), ax[0], classes, dataloader_name_list[dl_idx])
