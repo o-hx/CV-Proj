@@ -605,20 +605,26 @@ def test_model(test_dataloader,
                 ):
 
     log_print('Predicting on test set...', logger)
+    if not os.path.exists('predictions'):
+        os.mkdir('predictions')
 
     if torch.cuda.is_available():
         model.cuda()
 
-    all_outputs = torch.tensor([], device=device)
+    all_outputs = []
+    filepath = []
 
     with torch.no_grad():
         for _, data in enumerate(test_dataloader):
             inputs = data[0].to(device)
+            filepath += [os.path.basename(i) for i in data[1]]
             outputs = model(inputs)
-            all_outputs = torch.cat((all_outputs, outputs), 0)
+            all_outputs.append(outputs)
+        all_outputs = torch.cat(all_outputs)
     
     log_print('Saving predictions...', logger)
-    np.save(os.path.join(predictions_save_path,str(time.ctime()).replace(':','').replace('  ',' ').replace(' ','_')), all_outputs)
+    np.save(os.path.join(predictions_save_path,str(time.ctime()).replace(':','').replace('  ',' ').replace(' ','_')), all_outputs.cpu().numpy() )
+    return all_outputs.cpu().numpy(), filepath
 
 def validate_and_plot(validation_dataloader,
                     validation_dataloader_org,
