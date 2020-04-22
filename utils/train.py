@@ -600,6 +600,7 @@ def test_model(test_dataloader,
                 ):
 
     log_print('Predicting on test set...', logger)
+    os.mkdir('predictions')
 
     if torch.cuda.is_available():
         model.cuda()
