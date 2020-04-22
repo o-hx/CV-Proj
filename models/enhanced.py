@@ -36,7 +36,7 @@ class CloudSegment(nn.Module):
     def forward(self, x):
         # X is an image
         class_preds = self.classifier(x)
-        mask = class_preds > self.classifier_threshold
+        classifier_mask = class_preds > self.classifier_threshold
         
         # Prepare all the masks
         masks = dict(
@@ -58,10 +58,10 @@ class CloudSegment(nn.Module):
         for clas in ['sugar','flower','fish','gravel']:
             classifier2dl_classidx[self.classifier_class_order.index(clas)] = self.dataloader_class_order.index(clas)
             
-        final_predicted_masks = torch.tensor(predicted_masks).clone().detach()
+        final_predicted_masks = predicted_masks.clone().detach()
         for x_idx in range(class_preds.shape[0]):
             for class_idx in range(class_preds.shape[1]):
-                final_predicted_masks[x_idx, classifier2dl_classidx[class_idx]] = predicted_masks[x_idx, classifier2dl_classidx[class_idx]]*class_preds[x_idx, class_idx]
+                final_predicted_masks[x_idx, classifier2dl_classidx[class_idx]] = predicted_masks[x_idx, classifier2dl_classidx[class_idx]]*classifier_mask[x_idx, class_idx]
 
         return final_predicted_masks
 
