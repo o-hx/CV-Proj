@@ -12,6 +12,7 @@ from utils.misc import upload_google_sheets, get_module_name, log_print
 from models.auxillary import BinaryFocalLoss
 from models.unet import Unet
 from utils.data_classifier import prep_classification_data
+from models.enhanced import CloudSegment
 
 def mask2rle(pred):
     shape = pred.shape
@@ -46,66 +47,53 @@ if __name__ == '__main__':
     df_filepath = os.path.join(cwd,'data','train.csv')
     batch_size = 1
     seed = 2
-    classification_img_size = (int(10*64), int(15*64))
+    classification_img_size = (1400, 2100)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    classification_model = os.path.join(os.getcwd(),'weights','classifier.pth')
+    segmentation_model_fish  = os.path.join(os.getcwd(),'weights','final_fishUnet_EfficientNetEncoder_current_model.pth')
+    segmentation_model_flower = os.path.join(os.getcwd(),'weights','final_flowerUnet_EfficientNetEncoder_current_model.pth')
+    segmentation_model_gravel = os.path.join(os.getcwd(),'weights','final_gravelUnet_EfficientNetEncoder_current_model.pth')
+    segmentation_model_sugar = os.path.join(os.getcwd(),'weights','final_sugarUnet_EfficientNetEncoder_current_model.pth')
     
+    model = CloudSegment(classification_model,
+        sugar_path = segmentation_model_sugar,
+        flower_path = segmentation_model_flower,
+        fish_path = segmentation_model_fish,
+        gravel_path = segmentation_model_gravel,
+        classifier_class_order = ['flower', 'gravel', 'sugar', 'fish'],
+        classifier_threshold = 0.5,
+        dataloader_class_order = ['sugar','flower','fish','gravel'],
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"))
+
     transforms = torchvision.transforms.Compose([torchvision.transforms.Resize(classification_img_size),
                                                 torchvision.transforms.ToTensor(),
                                                 torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-    
-    model_class_order = ['flower', 'gravel', 'sugar', 'fish']
-    submission_order = ['fish','flower', 'gravel', 'sugar']
-    reorder_index = [model_class_order.index(submission_label) for submission_label in submission_order]
-    
+        
     _, _, classifier_test_dl, _ = prep_classification_data(train_image_filepath = train_image_filepath,
                                                            test_image_filepath = test_image_filepath,
                                                            df_filepath = df_filepath, 
                                                            seed = seed,
                                                            size = classification_img_size,
-                                                           list_of_classes = model_class_order,
+                                                           list_of_classes = ['flower', 'gravel', 'sugar', 'fish'],
                                                            transforms = transforms,
                                                            data_augmentation = None,
                                                            batch_size = batch_size)
-    classification_model = torch.load(os.path.join(os.getcwd(),'weights','flower_gravel_sugar_fishclassifier_EfficientNetbest_model.pth'))
+    
     if not os.path.exists('predictions'):
         os.mkdir('predictions')
     if torch.cuda.is_available():
-        classification_model.cuda()
+        model.cuda()
 
-    all_classification_outputs = []
-    classification_filepath = []
+    all_outputs = []
+    prediction_filepath = []
 
     with torch.no_grad():
         for _, data in enumerate(classifier_test_dl):
             inputs = data[0].to(device)
-            classification_filepath += [i for i in data[1]]
-            outputs = classification_model(inputs)
-            outputs = torch.index_select(outputs, 1, torch.LongTensor(reorder_index).to(device))
-            outputs = outputs.cpu().detach().numpy()
-            all_classification_outputs.append(np.where(outputs > 0.5, 1, 0))
-        all_classification_outputs = np.concatenate(all_classification_outputs, axis = 0)
-
-    segmentation_model_fish = torch.load(os.path.join(os.getcwd(),'weights','final_fishUnet_EfficientNetEncoder_current_model.pth'))
-    segmentation_model_flower = torch.load(os.path.join(os.getcwd(),'weights','final_flowerUnet_EfficientNetEncoder_current_model.pth'))
-    segmentation_model_gravel = torch.load(os.path.join(os.getcwd(),'weights','final_gravelUnet_EfficientNetEncoder_current_model.pth'))
-    segmentation_model_sugar = torch.load(os.path.join(os.getcwd(),'weights','final_sugarUnet_EfficientNetEncoder_current_model.pth'))
+            prediction_filepath += [i for i in data[1]]
+            outputs = model(inputs)
+            all_outputs.append(outputs.cpu().detach().numpy())
+        all_outputs = np.concatenate(all_outputs, axis = 0)
     
-    fish_segmentation_outputs = []
-    flower_segmentation_outputs = []
-    gravel_segmentation_outputs = []
-    sugar_segmentation_outputs = []
-    segmentation_filepath = []
-    
-    with torch.no_grad():
-        for _, data in enumerate(classifier_test_dl):
-            inputs = data[0].to(device)
-            segmentation_filepath += [i for i in data[1]]
-            outputs = segmentation_model_fish(inputs)
-            fish_segmentation_outputs += [mask2rle(mask) for mask in outputs.cpu().detach().numpy()]
-            print(fish_segmentation_outputs)
-            outputs = segmentation_model_flower(inputs)
-            flower_segmentation_outputs += [mask2rle(mask) for mask in outputs.cpu().detach().numpy()]
-            outputs = segmentation_model_gravel(inputs)
-            gravel_segmentation_outputs += [mask2rle(mask) for mask in outputs.cpu().detach().numpy()]
-            outputs = segmentation_model_sugar(inputs)
-            sugar_segmentation_outputs += [mask2rle(mask) for mask in outputs.cpu().detach().numpy()]
+    print(all_outputs)
