@@ -96,4 +96,4 @@ if __name__ == '__main__':
             all_outputs.append(outputs.cpu().detach().numpy())
         all_outputs = np.concatenate(all_outputs, axis = 0)
     
-    print(all_outputs)
+    print(all_outputs.shape)
