@@ -600,7 +600,8 @@ def test_model(test_dataloader,
                 ):
 
     log_print('Predicting on test set...', logger)
-    os.mkdir('predictions')
+    if not os.path.exists('predictions'):
+        os.mkdir('predictions')
 
     if torch.cuda.is_available():
         model.cuda()
@@ -613,9 +614,9 @@ def test_model(test_dataloader,
             outputs = model(inputs)
             all_outputs.append(outputs)
         all_outputs = torch.cat(all_outputs)
-    print(all_outputs.shape)
+    
     log_print('Saving predictions...', logger)
-    np.save(os.path.join(predictions_save_path,str(time.ctime()).replace(':','').replace('  ',' ').replace(' ','_')), all_outputs)
+    np.save(os.path.join(predictions_save_path,str(time.ctime()).replace(':','').replace('  ',' ').replace(' ','_')), all_outputs.cpu().numpy() )
     return os.path.join(predictions_save_path,str(time.ctime()).replace(':','').replace('  ',' ').replace(' ','_'))
 
 def validate_and_plot(validation_dataloader,
