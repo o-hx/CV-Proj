@@ -52,8 +52,7 @@ if __name__ == '__main__':
     seed = 2
     classification_img_size = (10*64, 15*64)
     actual_img_size = (1400, 2100)
-    device = torch.device("cpu")
-    #device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     classification_model = os.path.join(os.getcwd(),'weights','classifier.pth')
     segmentation_model_fish  = os.path.join(os.getcwd(),'weights','final_fishUnet_EfficientNetEncoder_current_model.pth')
@@ -91,8 +90,9 @@ if __name__ == '__main__':
     
     if not os.path.exists('predictions'):
         os.mkdir('predictions')
-    # if torch.cuda.is_available():
-    #     model.cuda()
+
+    if torch.cuda.is_available():
+        model.cuda()
 
     all_outputs = []
     prediction_filepath = []

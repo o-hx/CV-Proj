@@ -55,14 +55,14 @@ class CloudSegment(nn.Module):
         # Cat the masks together
         predicted_masks = torch.cat(predicted_masks, dim = 1)
 
-        # classifier2dl_classidx = {}
-        # for clas in ['sugar','flower','fish','gravel']:
-        #     classifier2dl_classidx[self.classifier_class_order.index(clas)] = self.dataloader_class_order.index(clas)
+        classifier2dl_classidx = {}
+        for clas in ['sugar','flower','fish','gravel']:
+            classifier2dl_classidx[self.classifier_class_order.index(clas)] = self.dataloader_class_order.index(clas)
             
-        # final_predicted_masks = predicted_masks.clone().detach()
-        # for x_idx in range(class_preds.shape[0]):
-        #     for class_idx in range(class_preds.shape[1]):
-        #         final_predicted_masks[x_idx, classifier2dl_classidx[class_idx]] = predicted_masks[x_idx, classifier2dl_classidx[class_idx]]*class_preds[x_idx, class_idx]
+        final_predicted_masks = predicted_masks.clone().detach()
+        for x_idx in range(class_preds.shape[0]):
+            for class_idx in range(class_preds.shape[1]):
+                final_predicted_masks[x_idx, classifier2dl_classidx[class_idx]] = predicted_masks[x_idx, classifier2dl_classidx[class_idx]]*class_preds[x_idx, class_idx]
 
         return predicted_masks, class_preds_grad
 
