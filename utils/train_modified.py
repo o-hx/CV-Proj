@@ -190,10 +190,8 @@ class ValidEpoch(Epoch):
         with torch.no_grad():
             prediction, class_preds = self.model.forward(x)
             seg_loss = self.loss[0](prediction, y)
-            seg_loss.backward()
 
             clas_loss = self.loss[1](class_preds, z)
-            clas_loss.backward()
             loss_value = seg_loss.cpu().item() + clas_loss.cpu().item()
         return loss_value, prediction
 
