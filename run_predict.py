@@ -9,6 +9,7 @@ import torchvision
 from utils.data import prepare_dataloader
 from utils.train import validate_and_plot
 from utils.misc import log_print
+from models.enhanced import CloudSegment
 
 if __name__ == '__main__':
     # Set up logging
@@ -84,7 +85,14 @@ if __name__ == '__main__':
                                                                                 drop_empty = drop_empty
                                                                                 )
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','baseline.pth'), map_location = device)
+    # segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','baseline.pth'), map_location = device)
+
+    segmentation_model = CloudSegment(classifier_path = os.path.join(os.getcwd(),'weights','classifier.pth'),
+                                        sugar_path = os.path.join(os.getcwd(),'weights','final_sugarUnet_EfficientNetEncoder_current_model.pth'),
+                                        flower_path = os.path.join(os.getcwd(),'weights','final_flowerUnet_EfficientNetEncoder_current_model.pth'),
+                                        fish_path = os.path.join(os.getcwd(),'weights','final_fishUnet_EfficientNetEncoder_current_model.pth'),
+                                        gravel_path = os.path.join(os.getcwd(),'weights','final_gravelUnet_EfficientNetEncoder_current_model.pth'),
+                                        device=device)
 
     metrics = [
         smp.utils.metrics.IoU(threshold=iou_threshold),
