@@ -98,7 +98,7 @@ def rle_to_mask(rle_string, width, height):
         img = img.T
         return img
 class Dataset(data.Dataset):
-    def __init__(self, image_filepath, EncodedPixels, size, transforms = None, mask_transform = None, test = False, equalise = True, label = ['fish', 'flower', 'gravel', 'sugar'], data_augmentations = None, grayscale = False):
+    def __init__(self, image_filepath, EncodedPixels, size, transforms = None, mask_transform = None, test = False, equalise = True, label = ['fish', 'flower', 'gravel', 'sugar'], data_augmentations = None, grayscale = False, return_labels = False):
         self.image_filepath = image_filepath
         self.EncodedPixels = EncodedPixels # Each encodedpixels should be (4, H, W) for 4 masks, in the order of Fish, Flower, Gravel and Sugar masks
         self.transforms = transforms
@@ -110,6 +110,7 @@ class Dataset(data.Dataset):
         self.label = label
         self.list_of_classes = ['fish', 'flower', 'gravel', 'sugar']
         self.data_augmentations = data_augmentations
+        self.return_labels = return_labels
 
     def __len__(self):
         return len(self.image_filepath)
@@ -141,8 +142,11 @@ class Dataset(data.Dataset):
                     raise ValueError("Make sure all labels belong to 'fish', 'flower', 'gravel' or 'sugar'")
             masks_to_include = [masks[self.list_of_classes.index(lab), :,:] for lab in self.label]
             masks = torch.squeeze(torch.stack(masks_to_include), 1)
-            labels = (masks.sum(2).sum(1) > 0).type(torch.float32)
-            return X, masks, labels
+            if self.return_labels:
+                labels = (masks.sum(2).sum(1) > 0).type(torch.float32)
+                return X, masks, labels
+            else:
+                return X, masks
 
 def histogram_equalize(filepath, equalise = False, grayscale = False):
     if grayscale:
@@ -204,7 +208,8 @@ def prepare_dataloader(train_image_filepath,
                         train_proportion = 0.9,
                         equalise = True,
                         grayscale = False,
-                        drop_empty = True):
+                        drop_empty = True,
+                        return_labels = False):
 
     train_df, valid_df = split_data(df_filepath, seed, train_proportion = train_proportion)
 
@@ -224,13 +229,13 @@ def prepare_dataloader(train_image_filepath,
         valid_images_no_empty, valid_masks_no_empty = None, None
     test_images = [test_image_filepath + '/' + i for i in os.listdir(test_image_filepath)][:100]
 
-    train_ds = Dataset(train_images_no_empty, train_masks_no_empty, size = size, test = False, transforms = train_transform, mask_transform = mask_transform, label = label, data_augmentations = data_augmentations, grayscale = grayscale, equalise = equalise)
-    valid_ds = Dataset(valid_images, valid_masks, size = size, test = False, transforms = test_transform, mask_transform = mask_transform, label = label, grayscale = grayscale, equalise = equalise)
+    train_ds = Dataset(train_images_no_empty, train_masks_no_empty, size = size, test = False, transforms = train_transform, mask_transform = mask_transform, label = label, data_augmentations = data_augmentations, grayscale = grayscale, equalise = equalise, return_labels = return_labels)
+    valid_ds = Dataset(valid_images, valid_masks, size = size, test = False, transforms = test_transform, mask_transform = mask_transform, label = label, grayscale = grayscale, equalise = equalise, return_labels = return_labels)
     if len(label) < 4 and drop_empty:
-        valid_ds_no_empty = Dataset(valid_images_no_empty, valid_masks_no_empty, size = size, test = False, transforms = test_transform, mask_transform = mask_transform, label = label, grayscale = grayscale, equalise = equalise)
+        valid_ds_no_empty = Dataset(valid_images_no_empty, valid_masks_no_empty, size = size, test = False, transforms = test_transform, mask_transform = mask_transform, label = label, grayscale = grayscale, equalise = equalise, return_labels = return_labels)
     else:
         valid_ds_no_empty = None
-    test_ds = Dataset(test_images, EncodedPixels = None, transforms = test_transform,  size = size, test = True, label = label, grayscale = grayscale, equalise = equalise)
+    test_ds = Dataset(test_images, EncodedPixels = None, transforms = test_transform,  size = size, test = True, label = label, grayscale = grayscale, equalise = equalise, return_labels = return_labels)
 
     train_dl = data.DataLoader(train_ds, batch_size = batch_size, shuffle = shuffle_train_dataloader, num_workers=12)
     valid_dl = data.DataLoader(valid_ds, batch_size = batch_size, shuffle = shuffle_val_dataloader, num_workers=8)
