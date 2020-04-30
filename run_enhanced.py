@@ -69,7 +69,8 @@ if __name__ == '__main__':
                                                                                 label = classes, 
                                                                                 data_augmentations = data_augmentations, 
                                                                                 grayscale = grayscale,
-                                                                                drop_empty = drop_empty
+                                                                                drop_empty = drop_empty,
+                                                                                return_labels = True
                                                                                 )
 
     # Define Model

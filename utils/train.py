@@ -287,8 +287,8 @@ def plot_roc_iou(dataloader_list,
                 masks = data[1].to(device)
                 if masks_pred.shape[1] != len(classes):
                     raise Exception('Your model predicts more classes than the number of classes specified')
-                y_pred_dl.append(masks_pred)
-                y_dl.append(masks)
+                y_pred_dl.append(masks_pred.cpu().detach())
+                y_dl.append(masks.cpu().detach())
         y_pred_dl, y_dl = torch.cat(y_pred_dl).cpu().detach(), torch.cat(y_dl).type(torch.long).cpu().detach()
         y_pred.append(y_pred_dl)
         y.append(y_dl)
