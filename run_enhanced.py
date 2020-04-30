@@ -30,17 +30,21 @@ if __name__ == '__main__':
     test_image_filepath = os.path.join(cwd,'data','test_images')
     df_filepath = os.path.join(cwd,'data','train.csv')
     seed = 2
-    batch_size = 1
+    batch_size = 16
     img_size = (int(4*64), int(6*64))
-    start_lr = 0.0005
+    start_lr = 1e-4
     classes = ['sugar','flower','fish','gravel']
     iou_threshold = 0.5
-    total_epochs = 1
+    total_epochs = 10
     grayscale = False
     drop_empty = True
     loss_args = dict(
-        beta = 0.8,
+        beta = 1,
         gamma = 2.
+    )
+    aux_params = dict(
+        classes = len(classes),
+        activation = 'sigmoid'
     )
 
     mask_transform = torchvision.transforms.Compose([torchvision.transforms.Resize(img_size),
@@ -74,14 +78,15 @@ if __name__ == '__main__':
                                                                                 )
 
     # Define Model
-    segmentation_model = CloudSegment(classifier_path = os.path.join(os.getcwd(),'weights','classifier.pth'),
-                                        sugar_path = os.path.join(os.getcwd(),'weights','final_sugarUnet_EfficientNetEncoder_current_model.pth'),
-                                        flower_path = os.path.join(os.getcwd(),'weights','final_flowerUnet_EfficientNetEncoder_current_model.pth'),
-                                        fish_path = os.path.join(os.getcwd(),'weights','final_fishUnet_EfficientNetEncoder_current_model.pth'),
-                                        gravel_path = os.path.join(os.getcwd(),'weights','final_gravelUnet_EfficientNetEncoder_current_model.pth'))
+    # segmentation_model = CloudSegment(classifier_path = os.path.join(os.getcwd(),'weights','classifier.pth'),
+    #                                     sugar_path = os.path.join(os.getcwd(),'weights','final_sugarUnet_EfficientNetEncoder_current_model.pth'),
+    #                                     flower_path = os.path.join(os.getcwd(),'weights','final_flowerUnet_EfficientNetEncoder_current_model.pth'),
+    #                                     fish_path = os.path.join(os.getcwd(),'weights','final_fishUnet_EfficientNetEncoder_current_model.pth'),
+    #                                     gravel_path = os.path.join(os.getcwd(),'weights','final_gravelUnet_EfficientNetEncoder_current_model.pth'))
 
     model_save_prefix = 'cloud_segmentator'
     # segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','baseline.pth'))
+    segmentation_model = Unet('efficientnet-b0', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type='msa', aux_params = aux_params)
 
     params = dict(
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
