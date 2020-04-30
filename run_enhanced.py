@@ -30,7 +30,7 @@ if __name__ == '__main__':
     test_image_filepath = os.path.join(cwd,'data','test_images')
     df_filepath = os.path.join(cwd,'data','train.csv')
     seed = 2
-    batch_size = 16
+    batch_size = 8
     img_size = (int(4*64), int(6*64))
     start_lr = 1e-4
     classes = ['sugar','flower','fish','gravel']
@@ -86,7 +86,7 @@ if __name__ == '__main__':
 
     model_save_prefix = 'cloud_segmentator'
     # segmentation_model = torch.load(os.path.join(os.getcwd(),'weights','baseline.pth'))
-    segmentation_model = Unet('efficientnet-b0', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type='msa', aux_params = aux_params)
+    segmentation_model = Unet('efficientnet-b3', encoder_weights='imagenet',classes=len(classes), activation='sigmoid', decoder_attention_type='scse', aux_params = aux_params)
 
     params = dict(
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
@@ -106,13 +106,15 @@ if __name__ == '__main__':
         dict(params= segmentation_model.parameters(), lr=start_lr),
     ])
 
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 10, T_mult=1)
+
     losses, metric_values, best_epoch, confusion_matrices = train_model(train_dataloader = train_dataloader,
                                                             validation_dataloader_list = [validation_dataloader],
                                                             model = segmentation_model,
                                                             loss = loss,
                                                             metrics = metrics,
                                                             optimizer = optimizer,
-                                                            scheduler = None,
+                                                            scheduler = scheduler,
                                                             batch_size = batch_size,
                                                             num_epochs = total_epochs,
                                                             device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
