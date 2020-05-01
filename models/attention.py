@@ -15,9 +15,9 @@ class PAM_Module(nn.Module):
         self.chanel_in = in_dim
 
         self.encode_decode_2 = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=1, kernel_size=4, stride = 4),
+            nn.Conv2d(in_channels=1, out_channels=1, kernel_size=2, stride = 2),
             nn.ReLU(),
-            nn.ConvTranspose2d(in_channels=1, out_channels=1, kernel_size=4, stride = 4)
+            nn.ConvTranspose2d(in_channels=1, out_channels=1, kernel_size=2, stride = 2)
         )
         self.sigmoid = nn.Sigmoid()
 
@@ -47,9 +47,9 @@ class CAM_Module(nn.Module):
         self.chanel_in = in_dim
         self.spatial_pool = nn.AdaptiveAvgPool2d(1)
         self.encode_decode = nn.Sequential(
-            nn.Conv1d(1, 1, kernel_size=4, stride=4),
+            nn.Conv1d(1, 1, kernel_size=2, stride=2),
             nn.ReLU(inplace=True),
-            nn.ConvTranspose1d(1, 1, kernel_size=4, stride=4),
+            nn.ConvTranspose1d(1, 1, kernel_size=2, stride=2),
             nn.Sigmoid()
         )
     def forward(self,x):

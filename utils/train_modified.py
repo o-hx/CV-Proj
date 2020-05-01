@@ -20,6 +20,7 @@ from segmentation_models_pytorch.utils.meter import AverageValueMeter
 from collections import OrderedDict
 from utils.misc import log_print, compute_cm_binary, get_iou_score
 from sklearn.cluster import KMeans
+from models.auxillary import Accuracy
 
 class Epoch:
     def __init__(self, model, loss, metrics, stage_name, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True, autoencoder = False):
@@ -91,12 +92,14 @@ class Epoch:
             metric_meter_classes = ['overall']
 
         metrics_meters = {f'{metric.__name__}_{_class}': AverageValueMeter() for metric in self.metrics for _class in metric_meter_classes}
+        metrics_meters['overall_c_accuracy'] = AverageValueMeter()
+        accuracy = Accuracy(threshold=0.5)
         confusion_matrices_epoch = []
         with tqdm(dataloader, desc=self.stage_name, file=sys.stdout, disable=not (self.verbose)) as iterator:
             # Run for 1 epoch
             for x, y, z in iterator:
                 x, y, z = x.to(self.device), y.to(self.device), z.to(self.device)
-                loss_value, y_pred = self.batch_update(x, y, z)
+                loss_value, y_pred, z_pred = self.batch_update(x, y, z)
                 # update loss logs
                 loss_meter.add(loss_value)
                 loss_logs = {self.loss[0].__name__: loss_meter.mean}
@@ -117,6 +120,8 @@ class Epoch:
                                 raise NotImplementedError('Shape of y_pred must have length 2 or 4')
                             metrics_meters[f'{metric_fn.__name__}_{self.classes[i]}'].add(metric_value)
 
+                accuracy_value = accuracy(z_pred, z).cpu().detach().numpy()
+                metrics_meters['overall_c_accuracy'].add(accuracy_value)
                 metrics_logs = {k: v.mean for k, v in metrics_meters.items() if 'overall' in k}
                 logs.update(metrics_logs)
 
@@ -163,7 +168,7 @@ class TrainEpoch(Epoch):
         self.optimizer.step()
         loss_value = loss.cpu().item()
         assert not np.isnan(loss_value), 'Loss cannot be NaN. Please restart'
-        return loss_value, prediction
+        return loss_value, prediction, class_preds
 
 class ValidEpoch(Epoch):
     def __init__(self, model, loss, metrics, device='cpu', verbose=True, logger = None, classes = ['sugar','flower','fish','gravel'], enable_class_wise_metrics = True, autoencoder = False):
@@ -190,7 +195,7 @@ class ValidEpoch(Epoch):
 
             clas_loss = self.loss[1](class_preds, z)
             loss_value = seg_loss.cpu().item() + clas_loss.cpu().item()
-        return loss_value, prediction
+        return loss_value, prediction, class_preds
 
 def plot_loss_metrics(validation_dataloader_list, losses, metrics, metric_values, metric_names, lr, num_epochs, batch_size, plots_save_path, start_time, logger = None):
     # Implement plotting feature
