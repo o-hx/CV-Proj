@@ -7,6 +7,7 @@ import os
 import json
 import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
+from matplotlib import pyplot as plt
 
 import torchvision
 from torchvision import models
@@ -70,4 +71,4 @@ if __name__ == "__main__":
                                 sign='positive',
                                 outlier_perc=1)
 
-    print(pic)
+    pic[0].savefig('model_viz.png')
