@@ -71,6 +71,7 @@ class Unet(SegmentationModel):
         classes: int = 1,
         activation: Optional[Union[str, callable]] = None,
         aux_params: Optional[dict] = None,
+        threshold: float = 0.5,
     ):
         super().__init__()
 
@@ -105,7 +106,26 @@ class Unet(SegmentationModel):
             self.classification_head = None
 
         self.name = "u-{}".format(encoder_name)
+        self.threshold = threshold
         self.initialize()
+    
+    def forward(self, x):
+        """Sequentially pass `x` trough model`s encoder, decoder and heads"""
+        features = self.encoder(x)
+        decoder_output = self.decoder(*features)
+
+        masks = self.segmentation_head(decoder_output)
+
+        if self.classification_head is not None:
+            labels = self.classification_head(features[-1])
+            if not self.training: # If evaluation
+                one_hot = labels.clone().detach().unsqueeze(-1).unsqueeze(-1) > self.threshold
+                masks = masks*one_hot
+                return masks, labels
+            else:
+                return masks, labels
+
+        return masks
 
 class DecoderBlock(nn.Module):
     def __init__(
