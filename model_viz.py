@@ -56,19 +56,29 @@ if __name__ == "__main__":
     print('Predicted:', predicted_label, '(', prediction_score.squeeze().item(), ')')
 
     integrated_gradients = IntegratedGradients(model)
-    attributions_ig = integrated_gradients.attribute(input, target=pred_label_idx, n_steps=200)
+    # attributions_ig = integrated_gradients.attribute(input, target=pred_label_idx, n_steps=200)
 
-    default_cmap = LinearSegmentedColormap.from_list('custom blue', 
-                                                    [(0, '#ffffff'),
-                                                    (0.25, '#000000'),
-                                                    (1, '#000000')], N=256)
+    # default_cmap = LinearSegmentedColormap.from_list('custom blue', 
+    #                                                 [(0, '#ffffff'),
+    #                                                 (0.25, '#000000'),
+    #                                                 (1, '#000000')], N=256)
 
-    pic = viz.visualize_image_attr(np.transpose(attributions_ig.squeeze().cpu().detach().numpy(), (1,2,0)),
-                                np.transpose(transformed_img.squeeze().cpu().detach().numpy(), (1,2,0)),
-                                method='heat_map',
-                                cmap=default_cmap,
-                                show_colorbar=True,
-                                sign='positive',
-                                outlier_perc=1)
+    # pic = viz.visualize_image_attr(np.transpose(attributions_ig.squeeze().cpu().detach().numpy(), (1,2,0)),
+    #                             np.transpose(transformed_img.squeeze().cpu().detach().numpy(), (1,2,0)),
+    #                             method='heat_map',
+    #                             cmap=default_cmap,
+    #                             show_colorbar=True,
+    #                             sign='positive',
+    #                             outlier_perc=1)
+
+    noise_tunnel = NoiseTunnel(integrated_gradients)
+
+    attributions_ig_nt = noise_tunnel.attribute(input, n_samples=5, nt_type='smoothgrad_sq', target=pred_label_idx)
+    pic = viz.visualize_image_attr_multiple(np.transpose(attributions_ig_nt.squeeze().cpu().detach().numpy(), (1,2,0)),
+                                        np.transpose(transformed_img.squeeze().cpu().detach().numpy(), (1,2,0)),
+                                        ["original_image", "heat_map"],
+                                        ["all", "positive"],
+                                        cmap=default_cmap,
+                                        show_colorbar=True)
 
     pic[0].savefig('model_viz.png')
