@@ -23,7 +23,6 @@ if __name__ == '__main__':
                         format='%(asctime)s - %(message)s',
                         level=logging.INFO)
 
-    # Return relevant dataloaders from whatever matthew's function is
     cwd = os.getcwd()
     train_image_filepath = os.path.join(cwd,'data','train_images')
     test_image_filepath = os.path.join(cwd,'data','test_images')
