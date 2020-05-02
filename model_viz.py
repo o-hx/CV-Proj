@@ -58,10 +58,10 @@ if __name__ == "__main__":
     integrated_gradients = IntegratedGradients(model)
     # attributions_ig = integrated_gradients.attribute(input, target=pred_label_idx, n_steps=200)
 
-    # default_cmap = LinearSegmentedColormap.from_list('custom blue', 
-    #                                                 [(0, '#ffffff'),
-    #                                                 (0.25, '#000000'),
-    #                                                 (1, '#000000')], N=256)
+    default_cmap = LinearSegmentedColormap.from_list('custom blue', 
+                                                    [(0, '#ffffff'),
+                                                    (0.25, '#000000'),
+                                                    (1, '#000000')], N=256)
 
     # pic = viz.visualize_image_attr(np.transpose(attributions_ig.squeeze().cpu().detach().numpy(), (1,2,0)),
     #                             np.transpose(transformed_img.squeeze().cpu().detach().numpy(), (1,2,0)),
