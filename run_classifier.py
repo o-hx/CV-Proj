@@ -32,7 +32,7 @@ if __name__ == '__main__':
     batch_size = 2
     img_size = (int(10*64), int(15*64))
     start_lr = 0.001
-    classes = ['flower','gravel']
+    classes = ['flower', 'grave','sugar' , 'fish']
     threshold = 0.5
     total_epochs = 20
 
